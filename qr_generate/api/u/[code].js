@@ -1,3 +1,5 @@
+// u/[code].js
+
 import { gristQuery, gristUpdateById } from "../_lib/grist.js";
 
 export default async function handler(req, res) {

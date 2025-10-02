@@ -25,7 +25,7 @@ const routes = [
 ]
 
 const router = createRouter({     // Create the router instance
-  history: createWebHistory (import.meta.env.DEV ? '/' : '/app/'),   // Use browser history mode (no #)
+  history: createWebHistory('/'),   // Use browser history mode (no #)
   routes,                         // Plug in the route table above
 })
 

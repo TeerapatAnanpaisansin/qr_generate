@@ -1,3 +1,5 @@
+// links/index.js
+
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { gristInsert, gristQuery } from "../_lib/grist.js";

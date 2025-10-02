@@ -1,3 +1,5 @@
+// links/[key].js
+
 import { authenticate } from "../_lib/auth.js";
 import { gristQuery, gristUpdateById, gristDeleteById } from "../_lib/grist.js";
 

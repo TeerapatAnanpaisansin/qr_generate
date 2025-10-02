@@ -1,101 +1,81 @@
 // frontend/src/api/api.js
-
 import axios from "axios";
 
-// use in localhost
-// const api = axios.create({ baseURL: "http://localhost:8080" });
-
-// for deploy vercel
 const api = axios.create({
-  baseURL: import.meta.env.DEV ? "http://localhost:8080" : "/api"
+  baseURL: "/api",
+  timeout: 15000
 });
 
-// CRITICAL: Request interceptor ALWAYS reads fresh token from localStorage
-api.interceptors.request.use(config => {
+/** Always attach the freshest token from localStorage */
+api.interceptors.request.use((config) => {
   const token = localStorage.getItem("jwt");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
-    console.log('[API] Using token for request:', config.url);
   } else {
     delete config.headers.Authorization;
   }
   return config;
 });
 
-// Response interceptor for debugging
+/** Optional: simple error logger */
 api.interceptors.response.use(
-  response => response,
-  error => {
-    console.error('[API] Request failed:', error.config?.url, error.response?.status);
-    throw error;
+  (res) => res,
+  (err) => {
+    const url = err?.config?.url ?? "";
+    const status = err?.response?.status;
+    console.error("[API] Failed:", url, status, err?.response?.data || err?.message);
+    throw err;
   }
 );
 
-export function setToken(t) {
-  if (t) {
-    localStorage.setItem("jwt", t);
-    api.defaults.headers.common.Authorization = `Bearer ${t}`;
+/** Helpers to manage token in one place */
+export function setToken(token) {
+  if (token) {
+    localStorage.setItem("jwt", token);
+    api.defaults.headers.common.Authorization = `Bearer ${token}`;
   } else {
-    localStorage.removeItem("jwt");
-    localStorage.removeItem("role");
-    delete api.defaults.headers.common.Authorization;
+    clearAuth();
   }
 }
-
-export async function register(payload) {
-  console.log('[API] Registering user...');
-  
-  // FORCE COMPLETE WIPE
-  localStorage.clear();
+export function clearAuth() {
+  localStorage.removeItem("jwt");
+  localStorage.removeItem("role");
   delete api.defaults.headers.common.Authorization;
-  
+}
+
+/** Auth */
+export async function register(payload) {
+  // fresh start to avoid stale tokens
+  clearAuth();
   const { data } = await api.post("/auth/register", payload);
-  
-  // Set fresh credentials
   localStorage.setItem("jwt", data.token);
   localStorage.setItem("role", data.user.role);
   api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
-  
-  console.log('[API] Registered as:', data.user.user_name, 'ID:', data.user.id, 'Role:', data.user.role);
-  
   return data;
 }
 
 export async function login(payload) {
-  console.log('[API] Logging in...');
-  
-  // FORCE COMPLETE WIPE - critical for preventing stale tokens
-  localStorage.clear();
-  sessionStorage.clear();
-  delete api.defaults.headers.common.Authorization;
-  
+  clearAuth();
   const { data } = await api.post("/auth/login", payload);
-  
-  // Set fresh credentials
   localStorage.setItem("jwt", data.token);
   localStorage.setItem("role", data.user.role);
   api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
-  
-  console.log('[API] Logged in as:', data.user.user_name, 'ID:', data.user.id, 'Role:', data.user.role);
-  console.log('[API] Token stored:', data.token.substring(0, 20) + '...');
-  
   return data;
 }
 
 export function logout() {
-  console.log('[API] Logging out...');
-  localStorage.clear();
-  sessionStorage.clear();
-  delete api.defaults.headers.common.Authorization;
+  clearAuth();
 }
 
+/** Links */
 export async function createLink({ real_url, code }) {
   const { data } = await api.post("/links", { real_url, code });
   return data;
 }
 
 export async function getLinkInfo(code) {
-  const { data } = await api.get(`/api/links/${code}`);
+  // serverless route: GET /api/links/:key
+  const { data } = await api.get(`/links/${encodeURIComponent(code)}`);
   return data;
 }
 
@@ -104,8 +84,8 @@ export async function listLinks() {
   return data;
 }
 
-export async function deleteLink(id) {
-  const { data } = await api.delete(`/links/${id}`);
+export async function deleteLink(key) {
+  const { data } = await api.delete(`/links/${encodeURIComponent(key)}`);
   return data;
 }
 

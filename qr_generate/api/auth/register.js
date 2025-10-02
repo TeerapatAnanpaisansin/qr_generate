@@ -1,3 +1,5 @@
+// auth/register.js
+
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { gristInsert, gristQuery } from "../_lib/grist.js";

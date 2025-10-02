@@ -9,7 +9,7 @@ export default defineConfig(({ command }) => {
   const isBuild = command === 'build'
   return {
     // serve SPA from /app/ in production (matches your Express setup)
-    base: isBuild ? '/app/' : '/',
+    base: '/',
     plugins: [vue(), tailwindcss()],
     resolve: {
       alias: {
