@@ -15,11 +15,10 @@ const api = axios.create(
 );
 
 export async function gristGetById(table, recId) {
-  const {data} = await api.get(`/tables/${table}/records`,
-    {
-      params: {filter: JSON.stringify({ id: [Number(recId)] }) },
-    },
-  );
+  const {data} = await api.get(`/tables/${table}/records`, {
+    params: {filter: JSON.stringify({ id: [Number(recId)] }) },
+  });
+  return data?.records?.[0] ?? null;
 }
 
 export async function gristInsert(table, fields) {
