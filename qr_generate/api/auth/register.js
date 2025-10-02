@@ -1,9 +1,7 @@
-// auth/register.js
-
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { gristInsert, gristQuery } from "../grist.js";
-import { signToken } from "../grist.js";
+import { gristInsert, gristQuery } from "../_lib/grist.js";
+import { signToken } from "../_lib/auth.js";
 
 const schema = z.object({
   user_name: z.string().min(3),

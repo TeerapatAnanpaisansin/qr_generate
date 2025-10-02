@@ -1,9 +1,7 @@
-// links/index.js
-
 import { z } from "zod";
 import { nanoid } from "nanoid";
-import { gristInsert, gristQuery } from "../grist.js";
-import { authenticate } from "../grist.js";
+import { gristInsert, gristQuery } from "../_lib/grist.js";
+import { authenticate } from "../_lib/auth.js";
 
 const createSchema = z.object({
   real_url: z.string().url(),
