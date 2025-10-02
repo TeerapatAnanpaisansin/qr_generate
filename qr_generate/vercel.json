@@ -1,20 +1,16 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "cd frontend && npm install && npm run build",
-  "outputDirectory": "frontend/dist",
   "framework": "vite",
+  "installCommand": "npm install && npm install --prefix frontend",
+  "buildCommand": "npm run build",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/**/*.js": { "runtime": "nodejs20.x" }
+  },
   "rewrites": [
+    { "source": "/u/:code", "destination": "/api/u/:code" },
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/u/:code", "destination": "/api/u/[code]" },
-    { "source": "/app/:path*", "destination": "/index.html" }
-  ],
-  "env": {
-    "JWT_SECRET": "@jwt_secret",
-    "GRIST_API_KEY": "@grist_api_key",
-    "GRIST_DOC_ID": "@grist_doc_id",
-    "GRIST_BASE_URL": "@grist_base_url",
-    "USERS_TABLE": "Users",
-    "LINKS_TABLE": "Links",
-    "ADMIN_EMAILS": "@admin_emails"
-  }
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
