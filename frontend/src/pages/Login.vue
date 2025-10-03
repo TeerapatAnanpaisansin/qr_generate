@@ -50,16 +50,7 @@
             {{ passwordError }}
           </p>
         </div>
-
-        <!-- Remember Me + Forgot Password -->
-        <!-- <div class="flex items-center justify-between">
-          <label class="flex items-center">
-            <input type="checkbox" v-model="rememberMe" class="mr-2">
-            <span class="text-gray-600 text-sm">Remember me</span>
-          </label>
-          <a href="#" class="text-[#19B4AC] text-sm hover:underline">Forgot password?</a>
-        </div> -->
-
+        
         <!-- Submit Button -->
         <button
           type="submit"

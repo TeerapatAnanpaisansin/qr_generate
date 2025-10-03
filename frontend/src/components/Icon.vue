@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import icons from '@/assets/icons' // default export from src/assets/icons/index.js
+import Icon from '@/assets/Icon'
 
 const { name, class: klass = '' } = defineProps({
   name: { type: String, required: true },
@@ -8,7 +8,7 @@ const { name, class: klass = '' } = defineProps({
 })
 
 /* recompute when `name` changes */
-const IconComponent = computed(() => icons[name] ?? null)
+const IconComponent = computed(() => Icon[name] ?? null)
 </script>
 
 <template>

@@ -1,8 +1,8 @@
 import PTrue from './password_visibility_true.vue'
 import PFalse from './password_visibility_false.vue'
 
-export const icons = {
+export const Icon = {
   password_visibility_true: PTrue,
   password_visibility_false: PFalse,
 }
-export default icons
+export default Icon

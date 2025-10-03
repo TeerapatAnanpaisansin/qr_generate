@@ -1,4 +1,3 @@
-import { all } from "axios";
 import { authenticate } from "../_lib/auth.js";
 import { gristQuery, gristUpdateById, gristDeleteById } from "../_lib/grist.js";
 
@@ -41,7 +40,8 @@ export default async function handler(req, res) {
         ? allLinks : allLinks.filter(r => resolveUserId(r.fields.user_id) === Number(user.id));
 
       const target = /^\d+$/.test(key)
-        ? mine.find(r => r.id === Number(key)) : mine.fields(r => r.fields.code === key);
+        ? mine.find(r => r.id === Number(key)) 
+        : mine.fields(r => r.fields.code === key);
       
       if(!target) {
         return res.status(404).json({ error : "Link not found"})
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         id: target.id,
         code: f.code,
         real_url: f.real_url,
-        click: Number(f.click) || 0,
+        clicks: Number(f.click) || 0,
         user_id: resolveUserId(f.user_id)
       });
 
