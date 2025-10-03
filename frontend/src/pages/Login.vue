@@ -81,9 +81,7 @@
 </template>
 
 <script> 
-import { ref } from 'vue'
 import { login } from "@/api/api.js";
-const showPassword = ref(false)
 
 export default {
   name: "LoginForm",

@@ -27,8 +27,6 @@ const router = createRouter({     // Create the router instance
   routes,                         // Plug in the route table above
 })
 
-export default router
-
 const app = createApp(App)        // Create the Vue app with App.vue as root
 app.use(router)                   // Tell the app to use Vue Router
 app.component('Icon', Icon)       // global register the Icon component

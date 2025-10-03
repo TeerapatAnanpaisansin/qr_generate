@@ -1,15 +1,24 @@
+import { all } from "axios";
 import { authenticate } from "../_lib/auth.js";
 import { gristQuery, gristUpdateById, gristDeleteById } from "../_lib/grist.js";
 
 function resolveUserId(val) {
-  if (val == null) return null;
-  if (typeof val === "number") return val;
+  if (val == null) {
+    return null;
+  }
+  if (typeof val === "number") {
+    return val;
+  }
   if (typeof val === "string") {
     const m = val.match(/\[(\d+)\]$/);
-    if (m) return Number(m[1]);
+    if (m) {
+      return Number(m[1]);
+    }
     return Number(val) || null;
   }
-  if (Array.isArray(val)) return Number(val[val.length - 1]) || null;
+  if (Array.isArray(val)) {
+    return Number(val[val.length - 1]) || null;
+  }
   return null;
 }
 
@@ -21,6 +30,42 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
+  }
+  if (req.method === "GET") {
+    try{
+      const user = await authenticate(req);
+      const key = String(req.query.key).trim();
+      const allLinks = await gristQuery(process.env.LINKS_TABLE, {});
+
+      const mine = user.role === "admin"
+        ? allLinks : allLinks.filter(r => resolveUserId(r.fields.user_id) === Number(user.id));
+
+      const target = /^\d+$/.test(key)
+        ? mine.find(r => r.id === Number(key)) : mine.fields(r => r.fields.code === key);
+      
+      if(!target) {
+        return res.status(404).json({ error : "Link not found"})
+      }
+
+      const f = target.fields || {};
+      if (f.deleted === true || (typeof f.clicks === "number" && f.clicks < 0) || String(f.code || '').startsWith('del_')) {
+        return res.status(404).json({ error: "Link not found"});
+      }
+      return res.json({
+        id: target.id,
+        code: f.code,
+        real_url: f.real_url,
+        click: Number(f.click) || 0,
+        user_id: resolveUserId(f.user_id)
+      });
+
+    }catch (e) {
+      if(e.message === "No token" || e.message === "User not found"){
+        return res.status(401).json({ error: "unauthorized"});
+      }
+      console.error(e);
+      return res.status(500).json({ error: "Server Error"});
+    }
   }
 
   if (req.method !== "DELETE") {
@@ -64,9 +109,6 @@ export default async function handler(req, res) {
   } catch (e) {
     if (e.message === "No token" || e.message === "User not found") {
       return res.status(401).json({ error: "Unauthorized" });
-    }
-    if (e instanceof z.ZodError) {
-      return res.status(400).json({ error: e.errors });
     }
     console.error(e);
     return res.status(500).json({ error: "Server error" });

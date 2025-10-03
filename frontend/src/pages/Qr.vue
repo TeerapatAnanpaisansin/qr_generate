@@ -101,7 +101,7 @@
               </td>
             </tr>
             <tr v-for="link in links" :key="link.id" class="hover:bg-gray-50">
-              <td class="text-left text-gray-600 border-2 border-gray-200 px-3 py-2 max-w-[400px] white-space-normal break-words">
+              <td class="text-left text-gray-600 border-2 border-gray-200 px-3 py-2 max-w-[400px] whitespace-normal break-words">
                 {{ link.full_url }}
               </td>
 
