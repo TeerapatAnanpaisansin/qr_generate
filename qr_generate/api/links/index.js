@@ -1,3 +1,5 @@
+// api/links/index.js
+
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { gristInsert, gristQuery } from "../_lib/grist.js";
@@ -22,10 +24,17 @@ function resolveUserId(val) {
   return null;
 }
 
+// Helper to build the base URL
+function getBaseUrl(req) {
+  const protocol = req.headers['x-forwarded-proto'] || 'https';
+  const host = req.headers['x-forwarded-host'] || req.headers.host || 'yourdomain.vercel.app';
+  return `${protocol}://${host}`;
+}
+
 export default async function handler(req, res) {
   // Handle CORS
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type");
 
@@ -35,6 +44,7 @@ export default async function handler(req, res) {
 
   try {
     const user = await authenticate(req);
+    const baseUrl = getBaseUrl(req);
 
     if (req.method === "POST") {
       const { real_url, code } = createSchema.parse(req.body);
@@ -54,7 +64,8 @@ export default async function handler(req, res) {
       return res.status(201).json({
         id: rec.id,
         code: shortCode,
-        short_url: `${req.headers.origin || "https://yourdomain.vercel.app"}/u/${shortCode}`,
+        short_url: `${baseUrl}/u/${shortCode}`,
+        // short_url: `${req.headers.origin || "https://yourdomain.vercel.app"}/u/${shortCode}`,
         real_url,
       });
     }
@@ -86,7 +97,7 @@ export default async function handler(req, res) {
           id: r.id,
           full_url: f.real_url,
           code: f.code,
-          short_url: `${req.headers.origin || "https://yourdomain.vercel.app"}/u/${f.code}`,
+          short_url: `${baseUrl}/u/${f.code}`,
           clicks: Number(f.clicks) || 0,
           user_id: uid != null ? String(uid) : "",
           owner: u ? { user_name: u.user_name, user_email: u.user_email, role: u.role } : null,
@@ -100,6 +111,9 @@ export default async function handler(req, res) {
   } catch (e) {
     if (e.message === "No token" || e.message === "User not found") {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({ error: e.errors });
     }
     console.error(e);
     return res.status(500).json({ error: "Server error" });

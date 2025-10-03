@@ -1,3 +1,5 @@
+// api/u/[code].js
+
 import { gristQuery, gristUpdateById } from "../_lib/grist.js";
 
 export default async function handler(req, res) {
@@ -7,6 +9,12 @@ export default async function handler(req, res) {
 
   try {
     const code = req.query.code;
+    
+    // Validate code parameter
+    if (!code || typeof code !== 'string') {
+      return res.status(400).send("Invalid or missing code");
+    }
+
     const rows = await gristQuery(process.env.LINKS_TABLE, { code });
 
     if (!rows.length) return res.status(404).send("Link not found");
@@ -16,6 +24,13 @@ export default async function handler(req, res) {
 
     if (!f.real_url || f.deleted === true || (typeof f.clicks === "number" && f.clicks < 0)) {
       return res.status(404).send("Link not found");
+    }
+
+    // Validate URL before redirecting
+    try {
+      new URL(f.real_url);
+    } catch {
+      return res.status(500).send("Invalid redirect URL");
     }
 
     const current = Number(f.clicks) || 0;

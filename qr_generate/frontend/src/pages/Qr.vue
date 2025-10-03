@@ -62,7 +62,7 @@
         <!-- Qr code with GPO Logo -->
         <div class="relative inline-block">
           <img v-if="qrSrc" :src="qrSrc" alt="QR" class="mx-auto mt-3 w-48 h-48" />
-          <img src="/Logo.png" alt="Logo" class="absolute top-27 left-1/2 w-16 h-8 -translate-x-1/2 -translate-y-1/2" />
+          <img src="/Logo.png" alt="Logo" class="absolute top-1/2 left-1/2 w-16 h-8 -translate-x-1/2 -translate-y-1/2" />
         </div>
       
         <button>

@@ -1,3 +1,6 @@
+// api/links/[key].js
+
+
 import { authenticate } from "../_lib/auth.js";
 import { gristQuery, gristUpdateById, gristDeleteById } from "../_lib/grist.js";
 
@@ -64,6 +67,9 @@ export default async function handler(req, res) {
   } catch (e) {
     if (e.message === "No token" || e.message === "User not found") {
       return res.status(401).json({ error: "Unauthorized" });
+    }
+    if (e instanceof z.ZodError) {
+      return res.status(400).json({ error: e.errors });
     }
     console.error(e);
     return res.status(500).json({ error: "Server error" });
