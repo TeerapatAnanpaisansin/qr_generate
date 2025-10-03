@@ -1,5 +1,3 @@
-<!-- frontend/src/pages/Login.vue -->
-
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-200">    
     <!-- <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm"> -->

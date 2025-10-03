@@ -1,5 +1,3 @@
-<!-- frontend/src/assets/icons/password_visibility_true.vue -->
-
 <script setup>
 defineOptions({ 
 	name: 'PasswordVisibilityTrue' 

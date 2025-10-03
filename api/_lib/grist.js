@@ -1,5 +1,3 @@
-// api/_lib/grist.js
-
 import axios from "axios";
 
 const base = process.env.GRIST_BASE_URL;

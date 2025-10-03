@@ -1,5 +1,3 @@
-<!-- frontend/src/components/Icon.vue -->
-
 <script setup>
 import { computed } from 'vue'
 import icons from '@/assets/icons' // default export from src/assets/icons/index.js

@@ -1,5 +1,3 @@
-<!-- src/pages/Qr.vue - Stable version without auto-refresh -->
-
 <template>
   <div class="min-h-screen flex flex-col items-center justify-center bg-gray-200">
     

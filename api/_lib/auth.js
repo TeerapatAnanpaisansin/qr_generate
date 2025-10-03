@@ -1,5 +1,3 @@
-// api/_lib/auth.js
-
 import jwt from "jsonwebtoken";
 import { gristGetById } from "./grist.js";
 

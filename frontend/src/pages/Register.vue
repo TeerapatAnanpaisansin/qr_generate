@@ -1,5 +1,3 @@
-<!-- src/pages/Register.vue -->
-
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-200">
     <div class="flex flex-col w-[400px] bg-white p-6 mt-10 shadow-lg backdrop-blur-lg rounded-2xl">

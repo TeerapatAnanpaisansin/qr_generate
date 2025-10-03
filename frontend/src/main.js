@@ -1,5 +1,3 @@
-// frontend/src/main.js
-
 import { createApp } from 'vue'
 import { createWebHistory, createRouter } from 'vue-router'
 import './styles/global.css'

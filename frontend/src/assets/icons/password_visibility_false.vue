@@ -1,5 +1,3 @@
-<!-- frontend/src/assets/icons/password_visibility_false.vue -->
-
 <script setup>
 defineOptions({
   name: 'PasswordVisibilityFalse',
