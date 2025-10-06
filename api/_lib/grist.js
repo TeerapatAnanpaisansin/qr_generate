@@ -32,7 +32,16 @@ export const grist = axios.create({
   timeout: 15000,
 });
 
-/* Small helpers */
+export async function gristGetById(table, recId) {
+  const id = Number(recId);
+  if (!Number.isFinite(id)) throw new Error("gristGetById: invalid id");
+  const { data } = await grist.get(
+    `/docs/${process.env.GRIST_DOC_ID}/tables/${table}/records`,
+    { params: { filter: JSON.stringify({ id: [id] }) } }
+  );
+  return data?.records?.[0] ?? null;
+}
+
 const DOC_ID = String(process.env.GRIST_DOC_ID).trim();
 export const TABLES = {
   USERS: String(process.env.USERS_TABLE).trim(),
