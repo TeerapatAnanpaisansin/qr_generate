@@ -62,7 +62,7 @@ export default async function handler(req, res) {
       return res.status(201).json({
         id: rec.id,
         code: shortCode,
-        short_url: `${baseUrl}/u/${shortCode}`,
+        short_url: `${baseUrl}/api/u/${shortCode}`,
         // short_url: `${req.headers.origin || "https://yourdomain.vercel.app"}/u/${shortCode}`,
         real_url,
       });
@@ -95,7 +95,7 @@ export default async function handler(req, res) {
           id: r.id,
           full_url: f.real_url,
           code: f.code,
-          short_url: `${baseUrl}/u/${f.code}`,
+          short_url: `${baseUrl}/api/u/${f.code}`,
           clicks: Number(f.clicks) || 0,
           user_id: uid != null ? String(uid) : "",
           owner: u ? { user_name: u.user_name, user_email: u.user_email, role: u.role } : null,
