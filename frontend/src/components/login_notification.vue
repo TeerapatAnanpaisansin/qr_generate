@@ -1,5 +1,3 @@
-<!-- frontend/src/components/login_notification.vue -->
-
 <template>
 
   <div

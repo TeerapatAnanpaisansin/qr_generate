@@ -1,5 +1,3 @@
-<!-- frontend/src/components/delete_notification.vue -->
-
 <template>
 
   <div

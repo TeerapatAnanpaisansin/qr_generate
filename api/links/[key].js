@@ -24,7 +24,7 @@ function resolveUserId(val) {
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET,DELETE,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type");
 
   if (req.method === "OPTIONS") {
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
 
       const target = /^\d+$/.test(key)
         ? mine.find(r => r.id === Number(key)) 
-        : mine.fields(r => r.fields.code === key);
+        : mine.find(r => r.fields.code === key);
       
       if(!target) {
         return res.status(404).json({ error : "Link not found"})
@@ -55,7 +55,7 @@ export default async function handler(req, res) {
         id: target.id,
         code: f.code,
         real_url: f.real_url,
-        clicks: Number(f.click) || 0,
+        clicks: Number(f.clicks) || 0,
         user_id: resolveUserId(f.user_id)
       });
 
