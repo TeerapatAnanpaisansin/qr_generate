@@ -1,56 +1,74 @@
 import axios from "axios";
 
-/* Validate envs early */
-const required = [
-  "GRIST_BASE_URL",
-  "GRIST_API_KEY",
-  "GRIST_DOC_ID",
-  "USERS_TABLE",
-  "LINKS_TABLE",
-];
-for (const k of required) {
-  const v = process.env[k];
-  if (!v || String(v).trim() === "") {
-    throw new Error(`Missing environment variable: ${k}`);
+/** Build config only when first used (prevents platform 404 on Vercel if envs are missing) */
+function getConfig() {
+  const must = (k) => {
+    const v = process.env[k];
+    if (!v || String(v).trim() === "") throw new Error(`Missing env: ${k}`);
+    return String(v).trim();
+  };
+
+  const rawBase = must("GRIST_BASE_URL");
+  if (!/^https?:\/\//i.test(rawBase)) {
+    throw new Error(`GRIST_BASE_URL must start with http(s):// — got "${rawBase}"`);
   }
+  const base = rawBase.replace(/\/+$/, "");
+
+  return {
+    base,
+    key: must("GRIST_API_KEY"),
+    doc: must("GRIST_DOC_ID"),
+    tables: {
+      USERS: must("USERS_TABLE"),
+      LINKS: must("LINKS_TABLE"),
+    },
+  };
 }
 
-/* Normalize base URL: must be https://.../api (no trailing slash) */
-const rawBase = String(process.env.GRIST_BASE_URL).trim();
-if (!/^https?:\/\//i.test(rawBase)) {
-  throw new Error(`GRIST_BASE_URL must start with http(s):// — got "${rawBase}"`);
+let client = null;
+let CFG = null;
+function ensureClient() {
+  if (client) return;
+  CFG = getConfig();
+  client = axios.create({
+    baseURL: CFG.base,
+    headers: {
+      Authorization: `Bearer ${CFG.key}`,
+      "Content-Type": "application/json",
+    },
+    timeout: 15000,
+  });
 }
-const base = rawBase.replace(/\/+$/, "");
 
-/* Axios instance */
-export const grist = axios.create({
-  baseURL: base,
-  headers: {
-    Authorization: `Bearer ${process.env.GRIST_API_KEY}`,
-    "Content-Type": "application/json",
-  },
-  timeout: 15000,
-});
+/** Helpers */
+export const TABLES = new Proxy(
+  {},
+  {
+    get(_, prop) {
+      ensureClient();
+      return CFG.tables[String(prop).toUpperCase()];
+    },
+  }
+);
 
+const tableUrl = (table) => {
+  ensureClient();
+  return `/docs/${CFG.doc}/tables/${table}/records`;
+};
+
+/** CRUD (same API as before) */
 export async function gristGetById(table, recId) {
+  ensureClient();
   const id = Number(recId);
   if (!Number.isFinite(id)) throw new Error("gristGetById: invalid id");
-  const { data } = await grist.get(
-    `/docs/${process.env.GRIST_DOC_ID}/tables/${table}/records`,
-    { params: { filter: JSON.stringify({ id: [id] }) } }
-  );
+  const { data } = await client.get(tableUrl(table), {
+    params: { filter: JSON.stringify({ id: [id] }) },
+  });
   return data?.records?.[0] ?? null;
 }
 
-const DOC_ID = String(process.env.GRIST_DOC_ID).trim();
-export const TABLES = {
-  USERS: String(process.env.USERS_TABLE).trim(),
-  LINKS: String(process.env.LINKS_TABLE).trim(),
-};
-
-const tableUrl = (table) => `/docs/${DOC_ID}/tables/${table}/records`;
-
 export async function gristQuery(table, filter = {}) {
+  ensureClient();
   const hasFilter = filter && Object.keys(filter).length > 0;
   let params;
   if (hasFilter) {
@@ -59,21 +77,26 @@ export async function gristQuery(table, filter = {}) {
     );
     params = { filter: JSON.stringify(normalized) };
   }
-  const { data } = await grist.get(tableUrl(table), { params });
+  const { data } = await client.get(tableUrl(table), { params });
   return data?.records ?? [];
 }
 
 export async function gristInsert(table, fields) {
-  const { data } = await grist.post(tableUrl(table), { records: [{ fields }] });
+  ensureClient();
+  const { data } = await client.post(tableUrl(table), { records: [{ fields }] });
   return data?.records?.[0] ?? null;
 }
 
 export async function gristUpdateById(table, recId, fields) {
-  const { data } = await grist.patch(tableUrl(table), { records: [{ id: recId, fields }] });
+  ensureClient();
+  const { data } = await client.patch(tableUrl(table), {
+    records: [{ id: recId, fields }],
+  });
   return data?.records?.[0] ?? null;
 }
 
 export async function gristDeleteById(table, recId) {
-  await grist.delete(tableUrl(table), { data: { records: [{ id: recId }] } });
+  ensureClient();
+  await client.delete(tableUrl(table), { data: { records: [{ id: recId }] } });
   return true;
 }

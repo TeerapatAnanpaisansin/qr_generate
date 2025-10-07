@@ -22,12 +22,12 @@ const routes = [
   { path: '/:pathMatch(.*)*', redirect: '/login' },
 ]
 
-const router = createRouter({     // Create the router instance
-  history: createWebHistory('/'),   // Use browser history mode (no #)
-  routes,                         // Plug in the route table above
+const router = createRouter({
+  history: createWebHistory('/'),
+  routes,
 })
 
-const app = createApp(App)        // Create the Vue app with App.vue as root
-app.use(router)                   // Tell the app to use Vue Router
-app.component('Icon', Icon)       // global register the Icon component
-app.mount('#app')                 // Mount the app onto <div id="app">
+const app = createApp(App)
+app.use(router) 
+app.component('Icon', Icon) 
+app.mount('#app') 
