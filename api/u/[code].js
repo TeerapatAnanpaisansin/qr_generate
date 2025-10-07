@@ -14,6 +14,11 @@ function isHttpUrl(u) {
   try { new URL(u); return true; } catch { return false; }
 }
 
+export default function handler(req, res) {
+  const code = req.query?.code ?? null;
+  res.status(200).json({ ok: true, code, note: "dynamic route alive" });
+}
+
 export default async function handler(req, res) {
   // Support GET and HEAD (some QR scanners/bots use HEAD)
   if (req.method !== "GET" && req.method !== "HEAD") {
