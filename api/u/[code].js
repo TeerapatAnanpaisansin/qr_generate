@@ -1,4 +1,4 @@
-import { gristQuery, gristUpdateById } from "../_lib/grist.js";
+import { gristQuery, gristUpdateById, TABLES } from "../_lib/grist.js";
 
 function isVisible(rec) {
   const f = rec?.fields || {};
@@ -9,70 +9,52 @@ function isVisible(rec) {
 }
 
 function isHttpUrl(u) {
-  if (!u || typeof u !== "string") return false;
-  if (!/^https?:\/\//i.test(u)) return false;
-  try { new URL(u); return true; } catch { return false; }
-}
-
-export default function handler(req, res) {
-  const code = req.query?.code ?? null;
-  res.status(200).json({ ok: true, code, note: "dynamic route alive" });
+  try {
+    const url = new URL(u);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export default async function handler(req, res) {
-  // Support GET and HEAD (some QR scanners/bots use HEAD)
-  if (req.method !== "GET" && req.method !== "HEAD") {
-    res.statusCode = 405;
-    res.setHeader("Allow", "GET, HEAD");
-    return res.end("Method not allowed");
-  }
-
   try {
-    const raw = req.query.code;
-    const code = typeof raw === "string" ? raw.trim() : "";
-
-    if (!code) {
-      res.statusCode = 400;
-      return res.end("Invalid or missing code");
+    // only support GET/HEAD for the hop
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      res.setHeader("Allow", "GET, HEAD");
+      return res.status(405).end("Method Not Allowed");
     }
 
-    // Public: no authenticate()
-    const rows = await gristQuery(process.env.LINKS_TABLE, { code });
+    const code = req.query?.code;
+    if (!code || typeof code !== "string") {
+      return res.status(404).end("Not found");
+    }
+
+    // find link by code
+    const rows = await gristQuery(TABLES.LINKS, { code });
     const rec = rows.find(isVisible);
-    if (!rec) {
-      res.statusCode = 404;
-      return res.end("Not found");
-    }
+    if (!rec) return res.status(404).end("Not found");
 
-    const id = rec.id;
+    const { id } = rec;
     const f = rec.fields || {};
-    const target = String(f.real_url || "").trim();
+    const real = String(f.real_url || "");
+    if (!isHttpUrl(real)) return res.status(400).end("Invalid destination");
 
-    if (!isHttpUrl(target)) {
-      res.statusCode = 400;
-      return res.end("Invalid target URL");
-    }
-
-    // Best-effort click increment (don't block redirect)
+    // increment clicks (best-effort; ignore errors)
     try {
-      const next = (Number(f.clicks) || 0) + 1;
-      await gristUpdateById(process.env.LINKS_TABLE, id, { clicks: next });
+      const nextClicks = (typeof f.clicks === "number" ? f.clicks : 0) + 1;
+      await gristUpdateById(TABLES.LINKS, id, { clicks: nextClicks });
     } catch (_) {}
 
-    // No-store to avoid caching the short link itself
+    // no-store so QR scans don't get cached by CDNs
     res.setHeader("Cache-Control", "no-store");
-    res.setHeader("Pragma", "no-cache");
-    res.setHeader("Expires", "0");
-    // Avoid search indexing of short hops
-    res.setHeader("X-Robots-Tag", "noindex, nofollow");
 
-    // Manual redirect (works on Vercel Node)
+    // manual 302 for GET/HEAD
     res.statusCode = 302;
-    res.setHeader("Location", target);
+    res.setHeader("Location", real);
     return res.end();
-  } catch (e) {
-    console.error(e);
-    res.statusCode = 500;
-    return res.end("Server error");
+  } catch (err) {
+    console.error("hop error:", err);
+    return res.status(500).end("Internal error");
   }
 }
