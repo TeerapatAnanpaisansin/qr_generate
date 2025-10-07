@@ -22,32 +22,23 @@ function resolveUserId(val) {
   return null;
 }
 
-// Helper to build the base URL
+// Build the base URL for short links
 function getBaseUrl(req) {
   if (process.env.PUBLIC_BASE_URL) {
-    return process.env.PUBLIC_BASE_URL.replace(/\/$/, '');
+    return process.env.PUBLIC_BASE_URL.replace(/\/$/, "");
   }
-  const protocol = req.headers['x-forwarded-proto'] || 'https';
-  const host = req.headers['x-forwarded-host'] || req.headers.host || 'yourdomain.vercel.app';
+  const protocol = req.headers["x-forwarded-proto"] || "https";
+  const host = req.headers["x-forwarded-host"] || req.headers.host || "yourdomain.vercel.app";
   return `${protocol}://${host}`;
 }
 
-return res.status(201).json({
-  code: shortCode,
-  short_url: `${baseUrl}/u/${shortCode}`,
-  real_url,
-});
-
 export default async function handler(req, res) {
-  // Handle CORS
+  // CORS
   res.setHeader("Access-Control-Allow-Credentials", "true");
   res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  if (req.method === "OPTIONS") return res.status(200).end();
 
   try {
     const user = await authenticate(req);
@@ -78,9 +69,8 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       const allRows = await gristQuery(process.env.LINKS_TABLE, {});
-      
-      let rows = user.role === "admin" 
-        ? allRows 
+      const rows = (user.role === "admin")
+        ? allRows
         : allRows.filter(r => resolveUserId(r.fields.user_id) === Number(user.id));
 
       const visible = rows.filter(r => {
@@ -98,7 +88,6 @@ export default async function handler(req, res) {
         const f = r.fields || {};
         const uid = resolveUserId(f.user_id);
         const u = uid != null ? userMap[uid] : null;
-
         return {
           id: r.id,
           full_url: f.real_url,
