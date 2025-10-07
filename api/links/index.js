@@ -32,6 +32,12 @@ function getBaseUrl(req) {
   return `${protocol}://${host}`;
 }
 
+return res.status(201).json({
+  code: shortCode,
+  short_url: `${baseUrl}/u/${shortCode}`,
+  real_url,
+});
+
 export default async function handler(req, res) {
   // Handle CORS
   res.setHeader("Access-Control-Allow-Credentials", "true");
