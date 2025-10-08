@@ -69,7 +69,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { createLink, listLinks, deleteLink } from '@/api/api'
-import DeleteNotification from '@/components/DeleteNotification.vue'
+import DeleteNotification from '@/components/delete_notification.vue'
 
 const url = ref('')
 const links = ref([])
