@@ -1,245 +1,132 @@
 <template>
-  <div class="min-h-screen flex flex-col items-center justify-center bg-gray-200">
-    
-    <!-- toast -->
-    <DeleteNotification
-      v-if="toastOpen"
-      :type="toastType"
-      :message="toastMessage"
-      @close="toastOpen = false"
-    />
+  <div class="mx-auto max-w-5xl p-6">
+    <div class="mx-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow">
+      <h2 class="mb-4 text-center text-2xl font-semibold">QR Generator</h2>
 
-    <div class="flex flex-col w-[400px] bg-white p-6 mt-10 shadow-lg backdrop-blur-lg rounded-2xl">
+      <label class="mb-2 block text-sm font-medium">Enter URL</label>
+      <input
+        v-model="url"
+        type="url"
+        placeholder="https://example.com/very/long/link"
+        class="w-full rounded-lg border-2 border-gray-200 px-3 py-2 focus:border-teal-500 focus:outline-none"
+      />
+      <button
+        class="mt-4 w-full rounded-lg bg-teal-600 px-4 py-2 font-medium text-white hover:bg-teal-700 disabled:opacity-60"
+        :disabled="loading"
+        @click="generate"
+      >
+        {{ loading ? 'Generating…' : 'Generate' }}
+      </button>
 
-      <h2 class="text-2xl font-bold mb-6 text-center text-[#19B4AC]">
-        QR Generator
-      </h2>
-
-      <!-- Enter Url Form -->
-      <form @submit.prevent="onGenerate" class="space-y-4">
-        <div>
-          <label for="longUrl" class="block mb-2 text-[#19B4AC] text-left text-[16px] font-bold">
-            Enter URL
-          </label>
-
-          <input
-            v-model.trim="longUrl"
-            id="longUrl"
-            type="url"
-            placeholder="https://example.com/very/long/link"
-            class="w-full rounded-lg border-2 border-gray-200 px-4 py-2 pr-10 text-gray-400 placeholder-slate-400 focus:outline-teal-400"
-            :class="inputClass(longUrlError)"
-          />
-          <p v-if="longUrlError" class="text-red-500 text-sm mt-1">
-            {{ longUrlError }}
-          </p>
-        </div>
-
-        <!-- Submit Button -->
-        <button
-          type="submit"
-          :disabled="loading"
-          class="w-full bg-[#19B4AC] hover:bg-[#139690] text-white font-semibold py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center"
-        >
-          <span v-if="loading" class="loader mr-2"></span>
-          {{ loading ? 'Generating…' : 'Generate' }}
-        </button>
-
-        <p v-if="serverError" class="text-red-600 text-sm text-center mt-2">
-          {{ serverError }}
-        </p>
-      </form>
-
-      <!-- Result -->
-      <div v-if="shortUrl" class="flex flex-col mt-6 text-center">
-        <p class="text-sm text-[#19B4AC] break-all">
-          Short URL:
-          <a :href="shortUrl" class="text-teal-400 underline" target="_blank" rel="noreferrer">{{ shortUrl }}</a>
-        </p>
-
-        <!-- Qr code with GPO Logo -->
-        <div class="relative inline-block">
-          <img v-if="qrSrc" :src="qrSrc" alt="QR" class="mx-auto mt-3 w-48 h-48" />
-          <img src="/Logo.png" alt="Logo" class="absolute top-1/2 left-1/2 w-16 h-8 -translate-x-1/2 -translate-y-1/2" />
-        </div>
-      
-        <button>
-          <a :href="qrSrc" download="qrcode.png" class="text-sm text-white bg-[#19B4AC] hover:bg-[#139690] font-semibold py-2 px-4 rounded-md transition-colors mt-4 inline-block">
-            Download QR Code
-          </a>
-        </button>
-      </div>
+      <DeleteNotification
+        v-if="toastOpen"
+        :type="toastType"
+        :message="toastMessage"
+        :duration="2500"
+        @close="toastOpen = false"
+      />
     </div>
 
-    <!-- History Table -->
-    <div class="justify content-center mt-10 mb-10 w-[1300px] max-w-[2000px] bg-white backdrop-blur-lg p-6 rounded-lg shadow-lg">
-      <div class="flex justify-between items-center mb-2">
-        <h3 class="text-lg font-bold text-gray-600">History</h3>
-        <button 
-          @click="loadLinks()"
-          class="text-sm bg-[#19B4AC] hover:bg-[#139690] text-white px-3 py-1 rounded-lg"
-        >
-          Refresh
-        </button>
+    <div class="mt-8 rounded-2xl bg-white p-4 shadow">
+      <div class="mb-3 flex items-center justify-between px-2">
+        <h3 class="text-lg font-semibold">History</h3>
+        <button class="rounded-lg border px-3 py-1 hover:bg-gray-50" @click="loadLinks">Refresh</button>
       </div>
-      
-      <div class="overflow-x-auto rounded-t-lg">
-        <table class="w-full text-white text-sm text-center">
-          <thead class="bg-[#19B4AC] border-collapse border-2 border-[#19B4AC]">
-            <tr>
-              <th class="px-20 py-2">Full Url</th>
-              <th class="px-14 py-2 w-[200px]">Short Url</th>
-              <th class="px-4 py-2 w-[50px]">Clicks</th>
-              <th v-if="role==='admin'" class="px-6 py-2 w-[80px]">User</th>
-              <th class="px-4 py-2 w-[50px]"></th>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-full table-fixed">
+          <thead>
+            <tr class="bg-teal-600 text-left text-white">
+              <th class="w-[60%] px-3 py-2">Full Url</th>
+              <th class="w-[25%] px-3 py-2">Short Url</th>
+              <th class="w-[10%] px-3 py-2">Clicks</th>
+              <th class="w-[5%] px-3 py-2"></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="links.length === 0">
-              <td :colspan="role === 'admin' ? 5 : 4" class="text-gray-400 border-2 border-gray-200 px-3 py-8 text-center">
-                No links yet
-              </td>
+            <tr v-if="!links.length">
+              <td colspan="4" class="px-3 py-6 text-center text-gray-400">No links yet</td>
             </tr>
-            <tr v-for="link in links" :key="link.id" class="hover:bg-gray-50">
-              <td class="text-left text-gray-600 border-2 border-gray-200 px-3 py-2 max-w-[400px] whitespace-normal break-words">
-                {{ link.full_url }}
+            <tr v-for="l in links" :key="l.id ?? l.code" class="border-b">
+              <td class="truncate px-3 py-2">
+                <a :href="l.full_url" class="text-teal-700 hover:underline" target="_blank">{{ l.full_url }}</a>
               </td>
-
-              <td class="border-2 border-gray-200 px-3 py-2">
-                <a :href="link.short_url" target="_blank" class="text-teal-600 underline">
-                  {{ link.short_url }}
-                </a>
+              <td class="truncate px-3 py-2">
+                <a :href="l.short_url" class="text-teal-700 hover:underline" target="_blank">{{ l.short_url }}</a>
               </td>
-
-              <td class="text-gray-600 border-2 border-gray-200 px-3 py-2 text-center min-w-[50px]">
-                {{ link.clicks }}
-              </td>
-
-              <td v-if="role==='admin'" class="border-2 border-gray-200 px-3 py-2 text-gray-600">
-                <template v-if="link.owner">
-                  {{ link.owner.user_name }} ({{ link.owner.user_email }})
-                </template>
-                <template v-else>
-                  <span class="text-gray-400">Unknown</span>
-                </template>
-              </td>
-
-              <td class="border-2 border-gray-200 px-3 py-2 text-center">
-                <button @click="removeLink(link)" class="text-red-600 hover:underline">
-                  Delete
-                </button>
+              <td class="px-3 py-2">{{ l.clicks }}</td>
+              <td class="px-3 py-2 text-right">
+                <button class="rounded-md px-2 py-1 text-red-600 hover:bg-red-50" @click="removeLink(l)">Delete</button>
               </td>
             </tr>
           </tbody>
         </table>
       </div>
     </div>
-
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { createLink, listLinks, deleteLink } from '@/api/api.js'
-import DeleteNotification from '@/components/delete_notification.vue'
+import { createLink, listLinks, deleteLink } from '@/api/api'
+import DeleteNotification from '@/components/DeleteNotification.vue'
 
-const role = ref(localStorage.getItem("role") || "user")
+const url = ref('')
+const links = ref([])
+const loading = ref(false)
 
 const toastOpen = ref(false)
 const toastType = ref('success')
 const toastMessage = ref('')
 
-const longUrl = ref('')
-const loading = ref(false)
-const shortUrl = ref('')
-const qrSrc = ref('')
-const longUrlError = ref('')
-const serverError = ref('')
-const links = ref([])
-
 function showToast(type, msg) {
   toastType.value = type
   toastMessage.value = msg
   toastOpen.value = true
-  setTimeout(() => (toastOpen.value = false), 2500)
 }
 
-function inputClass(err) {
-  return err 
-    ? 'border-2 border-red-500 focus:ring-red-400' 
-    : 'border-2 border-gray-200 focus:ring-teal-400'
-}
-
-// Load links
-async function loadLinks(showNotification = false) {
+async function loadLinks() {
   try {
-    const res = await listLinks()
-    
-    // Normalize clicks to handle both number and object formats
-    links.value = res.map(l => ({
-      ...l,
-      clicks: typeof l.clicks === 'object' ? (l.clicks?.count ?? 0) : (Number(l.clicks) || 0)
-    }))
-    
-    console.log(`Loaded ${links.value.length} links`)
-    
-    if (showNotification) {
-      showToast('success', 'Links refreshed')
-    }
+    const data = await listLinks()
+    links.value = Array.isArray(data) ? data : []
   } catch (e) {
-    console.error('Failed to load links:', e)
+    console.error('load links failed:', e)
     showToast('error', 'Failed to load links')
   }
 }
 
-// Delete a link
-async function removeLink(link) {
-  const key = link?.id ?? link?.code
-  if (!key) return showToast('error', 'Cannot delete: missing identifier')
-
-  if (!confirm(`Delete ${link.short_url || link.code}?`)) return
-  
-  try {
-    const res = await deleteLink(key)
-    links.value = links.value.filter(x => (x.id ?? x.code) !== key)
-    await loadLinks()
-    showToast('success', res?.softDeleted ? 'Link removed.' : 'Link deleted.')
-  } catch (e) {
-    const msg = e?.response?.data?.error || 'Delete failed'
-    console.error('delete failed:', e)
-    showToast('error', msg)
-  }
-}
-
-// Generate short link + QR code
-async function onGenerate() {
-  longUrlError.value = ''
-  serverError.value = ''
-  shortUrl.value = ''
-  qrSrc.value = ''
-
-  try {
-    new URL(longUrl.value)
-  } catch {
-    longUrlError.value = 'Enter a valid URL starting with http(s)://'
-    return
-  }
-
+async function generate() {
+  const real = url.value?.trim()
+  if (!real) return showToast('error', 'Please enter a URL')
   loading.value = true
   try {
-    const { short_url } = await createLink({ real_url: longUrl.value.trim() })
-    shortUrl.value = short_url
-    qrSrc.value = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(short_url)}`
+    const res = await createLink({ real_url: real })
     await loadLinks()
-    showToast('success', 'Short link created!')
+    showToast('success', `Shortened → ${res.short_url}`)
+    url.value = ''
   } catch (e) {
-    serverError.value = e?.response?.data?.error || 'Failed to create link'
+    const msg = e?.response?.data?.error || 'A server error has occurred'
+    showToast('error', msg)
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
-  loadLinks()
-})
+async function removeLink(link) {
+  const key = link?.id ?? link?.code
+  if (!key) return showToast('error', 'Cannot delete: missing identifier')
+
+  if (!confirm(`Delete ${link.short_url || link.code}?`)) return
+  try {
+    await deleteLink(key)
+    await loadLinks()
+    showToast('success', 'Link deleted.')
+  } catch (e) {
+    const msg = e?.response?.data?.error || 'Delete failed'
+    showToast('error', msg)
+  }
+}
+
+onMounted(loadLinks)
 </script>
+

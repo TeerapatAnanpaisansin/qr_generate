@@ -6,11 +6,9 @@
   "buildCommand": "cd frontend && npm run build",
   "outputDirectory": "frontend/dist",
   "rewrites": [
-    { "source": "/api/:path*", "destination": "/api/:path*" },
-    { "source": "/u/:code",      "destination": "/api/u?code=:code" },
-    { "source": "/api/u/:code",  "destination": "/api/u?code=:code" },
-    { "source": "/api/(.*)",     "destination": "/api/$1" },
-    { "source": "/qr", "destination": "/" },
+    { "source": "/u/:code",     "destination": "/api/u?code=:code" },
+    { "source": "/api/:path*",  "destination": "/api/:path*" },
+    { "source": "/qr",          "destination": "/" },
     { "source": "/((?!api).*)", "destination": "/" }
   ],
   "cleanUrls": true,

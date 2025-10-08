@@ -11,24 +11,14 @@ export function signToken(payload) {
 }
 
 export async function authenticate(req) {
-  const authHeader = req.headers.authorization || "";
-  const token = authHeader.replace(/^Bearer\s+/i, "");
-  
-  if (!token) throw new Error("No token");
-
-  const payload = jwt.verify(token, process.env.JWT_SECRET);
-  const rec = await gristGetById(process.env.USERS_TABLE, payload.id);
-  
-  if (!rec) throw new Error("User not found");
-
-  const email = (rec.fields.user_email || "").toLowerCase();
-  const dbRole = rec.fields.role || "user";
-  const role = dbRole === "admin" || ADMIN_EMAILS.includes(email) ? "admin" : "user";
-
-  return {
-    id: rec.id,
-    user_name: rec.fields.user_name,
-    user_email: rec.fields.user_email,
-    role,
-  };
+  const auth = req.headers.authorization || "";
+  const m = auth.match(/^Bearer\s+(.+)$/i);
+  if (!m) throw new Error("No token");
+  try {
+    const user = jwt.verify(m[1], process.env.JWT_SECRET || "secret");
+    if (!user) throw new Error("User not found");
+    return user;
+  } catch {
+    throw new Error("User not found");
+  }
 }

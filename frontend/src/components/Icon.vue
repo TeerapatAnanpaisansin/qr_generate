@@ -2,9 +2,8 @@
 import { computed } from 'vue'
 import Icon from '@/assets/Icon'
 
-const { name, class: klass = '' } = defineProps({
-  name: { type: String, required: true },
-  class: { type: String, default: '' },
+const { name } = defineProps({ 
+  name: { type: String, required: true } 
 })
 
 /* recompute when `name` changes */
@@ -13,8 +12,5 @@ const IconComponent = computed(() => Icon[name] ?? null)
 
 <template>
   <!-- render nothing if name not found (no crash) -->
-  <component 
-  :is="IconComponent" 
-  :key="name" v-bind="$attrs" 
-  :class="klass" />
+  <component :is="IconComponent" :key="name" v-bind="$attrs" />
 </template>

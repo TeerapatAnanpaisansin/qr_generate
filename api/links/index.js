@@ -1,11 +1,12 @@
 import { z } from "zod";
 import { nanoid } from "nanoid";
-import { gristInsert, gristQuery } from "../_lib/grist.js";
 import { authenticate } from "../_lib/auth.js";
+import { setCors, getBaseUrl } from "../_lib/http.js";
+import { gristInsert, gristQuery, gristDeleteById, TABLES } from "../_lib/grist.js";
 
 const createSchema = z.object({
   real_url: z.string().url(),
-  code: z.string().min(4).max(32).optional(),
+  code: z.string().min(4).max(32).optional()
 });
 
 function resolveUserId(val) {
@@ -22,95 +23,91 @@ function resolveUserId(val) {
   return null;
 }
 
-// Build the base URL for short links
-function getBaseUrl(req) {
-  if (process.env.PUBLIC_BASE_URL) {
-    return process.env.PUBLIC_BASE_URL.replace(/\/$/, "");
-  }
-  const protocol = req.headers["x-forwarded-proto"] || "https";
-  const host = req.headers["x-forwarded-host"] || req.headers.host || "yourdomain.vercel.app";
-  return `${protocol}://${host}`;
+function visibleRow(r) {
+  const f = r.fields || {};
+  if (f.deleted === true) return false;
+  if (typeof f.clicks === "number" && f.clicks < 0) return false;
+  if (String(f.code || "").startsWith("del_")) return false;
+  return true;
 }
 
 export default async function handler(req, res) {
-  // CORS
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", req.headers.origin || "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization,Content-Type");
-  if (req.method === "OPTIONS") return res.status(200).end();
+  if (setCors(req, res)) return;
 
   try {
-    const user = await authenticate(req);
+    const user = await authenticate(req);       // throws 401-like errors
     const baseUrl = getBaseUrl(req);
 
     if (req.method === "POST") {
-      const { real_url, code } = createSchema.parse(req.body);
+      const { real_url, code } = createSchema.parse(req.body || {});
       const shortCode = code || nanoid(8);
 
-      const existing = await gristQuery(process.env.LINKS_TABLE, { code: shortCode });
-      if (existing.length) return res.status(409).json({ error: "code already exists" });
+      const exists = await gristQuery(TABLES.LINKS, { code: shortCode });
+      if (exists.length) return res.status(409).json({ error: "code already exists" });
 
-      const rec = await gristInsert(process.env.LINKS_TABLE, {
+      const rec = await gristInsert(TABLES.LINKS, {
         user_id: Number(user.id),
         code: shortCode,
         real_url,
         created_date: new Date().toISOString(),
-        clicks: 0,
+        clicks: 0
       });
 
       return res.status(201).json({
         id: rec.id,
         code: shortCode,
-        short_url: `${baseUrl}/u/${shortCode}`,
         real_url,
+        short_url: `${baseUrl}/u/${shortCode}`
       });
     }
 
     if (req.method === "GET") {
-      const allRows = await gristQuery(process.env.LINKS_TABLE, {});
+      const all = await gristQuery(TABLES.LINKS, {});
       const rows = (user.role === "admin")
-        ? allRows
-        : allRows.filter(r => resolveUserId(r.fields.user_id) === Number(user.id));
+        ? all
+        : all.filter(r => resolveUserId(r.fields?.user_id) === Number(user.id));
 
-      const visible = rows.filter(r => {
-        const f = r.fields || {};
-        if (f.deleted === true) return false;
-        if (typeof f.clicks === "number" && f.clicks < 0) return false;
-        if (String(f.code || "").startsWith("del_")) return false;
-        return true;
-      });
+      const visible = rows.filter(visibleRow);
 
-      const userRows = await gristQuery(process.env.USERS_TABLE, {});
-      const userMap = Object.fromEntries(userRows.map(u => [Number(u.id), u.fields]));
-
-      const out = visible.map(r => {
-        const f = r.fields || {};
-        const uid = resolveUserId(f.user_id);
-        const u = uid != null ? userMap[uid] : null;
-        return {
-          id: r.id,
-          full_url: f.real_url,
-          code: f.code,
-          short_url: `${baseUrl}/u/${f.code}`,
-          clicks: Number(f.clicks) || 0,
-          user_id: uid != null ? String(uid) : "",
-          owner: u ? { user_name: u.user_name, user_email: u.user_email, role: u.role } : null,
-        };
-      });
+      const out = visible.map(r => ({
+        id: r.id,
+        full_url: r.fields?.real_url || "",
+        code: r.fields?.code || "",
+        short_url: `${baseUrl}/u/${r.fields?.code || ""}`,
+        clicks: Number(r.fields?.clicks) || 0
+      }));
 
       return res.json(out);
     }
 
-    return res.status(405).json({ error: "Method not allowed" });
+    if (req.method === "DELETE") {
+      const key = (req.query?.id || req.query?.code || "").toString();
+      if (!key) return res.status(400).json({ error: "missing id/code" });
+
+      // Try by numeric id first
+      const idNum = Number(key);
+      if (Number.isFinite(idNum)) {
+        await gristDeleteById(TABLES.LINKS, idNum);
+        return res.json({ deleted: true });
+      }
+
+      // Fallback: lookup by code
+      const rows = await gristQuery(TABLES.LINKS, { code: key });
+      if (!rows.length) return res.status(404).json({ error: "not found" });
+      await gristDeleteById(TABLES.LINKS, rows[0].id);
+      return res.json({ deleted: true });
+    }
+
+    res.setHeader("Allow", "GET,POST,DELETE,OPTIONS");
+    return res.status(405).json({ error: "method not allowed" });
   } catch (e) {
     if (e.message === "No token" || e.message === "User not found") {
-      return res.status(401).json({ error: "Unauthorized" });
+      return res.status(401).json({ error: "unauthorized" });
     }
     if (e instanceof z.ZodError) {
       return res.status(400).json({ error: e.errors });
     }
-    console.error(e);
-    return res.status(500).json({ error: "Server error" });
+    console.error("links error:", e);
+    return res.status(500).json({ error: "server error" });
   }
 }

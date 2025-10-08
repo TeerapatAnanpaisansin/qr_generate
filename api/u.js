@@ -7,11 +7,7 @@ function isVisible(rec) {
   if (String(f.code || "").startsWith("del_")) return false;
   return true;
 }
-
-function isHttpUrl(u) {
-  try { const x = new URL(u); return x.protocol === "http:" || x.protocol === "https:"; }
-  catch { return false; }
-}
+function isHttpUrl(u) { try { const x = new URL(u); return x.protocol === "http:" || x.protocol === "https:"; } catch { return false; } }
 
 export default async function handler(req, res) {
   try {
@@ -19,8 +15,7 @@ export default async function handler(req, res) {
       res.setHeader("Allow", "GET, HEAD");
       return res.status(405).end("Method Not Allowed");
     }
-
-    const code = (req.query?.code || "").toString();
+    const code = String(req.query?.code || "");
     if (!code) return res.status(404).end("Not found");
 
     const rows = await gristQuery(TABLES.LINKS, { code });
@@ -41,8 +36,8 @@ export default async function handler(req, res) {
     res.statusCode = 302;
     res.setHeader("Location", real);
     res.end();
-  } catch (err) {
-    console.error("hop error:", err);
+  } catch (e) {
+    console.error("u hop error:", e);
     res.status(500).end("Internal error");
   }
 }
