@@ -28,7 +28,7 @@
     </div>
 
     <!-- History Table -->
-    <div class="justify content-center mt-10 mb-10 w-[1300px] max-w-[2000px] bg-white backdrop-blur-lg p-6 rounded-lg shadow-lg">
+    <div class="justify content-center mt-10 mb-10 w-full max-w-[2000px] bg-white backdrop-blur-lg p-6 rounded-lg shadow-lg mx-auto">
       <div class="flex justify-between items-center mb-2">
         <h3 class="text-lg font-bold text-gray-600">History</h3>
         <button 
@@ -39,7 +39,7 @@
       </div>
 
       <div class="overflow-x-auto rounded-t-lg">
-        <table class="w-full text-white text-sm text-center">
+        <table class="w-full text-white text-sm text-center mx-auto">
           <thead class="bg-[#19B4AC] border-collapse border-2 border-[#19B4AC]">
             <tr>
               <th class="px-20 py-2">Full Url</th>
@@ -74,7 +74,7 @@
               </td>
 
               <!-- Show the owner column only for admin -->
-              <td v-if="role === 'admin'" class="border-2 border-gray-200 px-3 py-2 text-gray-600">
+              <td v-if="role === 'admin'" class="sm:block hidden border-2 border-gray-200 px-3 py-2 text-gray-600">
                 <template v-if="link.owner">
                   {{ link.owner.user_name }} ({{ link.owner.user_email }})
                 </template>
@@ -93,6 +93,7 @@
         </table>
       </div>
     </div>
+
   </div>
 </template>
 
