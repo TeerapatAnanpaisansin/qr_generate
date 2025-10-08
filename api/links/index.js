@@ -1,8 +1,9 @@
+// api/links/index.js
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { authenticate } from "../_lib/auth.js";
 import { setCors, getBaseUrl } from "../_lib/http.js";
-import { gristInsert, gristQuery, gristDeleteById, TABLES } from "../_lib/grist.js";
+import { gristInsert, gristQuery, TABLES } from "../_lib/grist.js";
 
 const createSchema = z.object({
   real_url: z.string().url(),
@@ -35,7 +36,7 @@ export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
   try {
-    const user = await authenticate(req);       // throws 401-like errors
+    const user = await authenticate(req);
     const baseUrl = getBaseUrl(req);
 
     if (req.method === "POST") {
@@ -80,25 +81,7 @@ export default async function handler(req, res) {
       return res.json(out);
     }
 
-    if (req.method === "DELETE") {
-      const key = (req.query?.id || req.query?.code || "").toString();
-      if (!key) return res.status(400).json({ error: "missing id/code" });
-
-      // Try by numeric id first
-      const idNum = Number(key);
-      if (Number.isFinite(idNum)) {
-        await gristDeleteById(TABLES.LINKS, idNum);
-        return res.json({ deleted: true });
-      }
-
-      // Fallback: lookup by code
-      const rows = await gristQuery(TABLES.LINKS, { code: key });
-      if (!rows.length) return res.status(404).json({ error: "not found" });
-      await gristDeleteById(TABLES.LINKS, rows[0].id);
-      return res.json({ deleted: true });
-    }
-
-    res.setHeader("Allow", "GET,POST,DELETE,OPTIONS");
+    res.setHeader("Allow", "GET,POST,OPTIONS");
     return res.status(405).json({ error: "method not allowed" });
   } catch (e) {
     if (e.message === "No token" || e.message === "User not found") {
@@ -107,7 +90,7 @@ export default async function handler(req, res) {
     if (e instanceof z.ZodError) {
       return res.status(400).json({ error: e.errors });
     }
-    console.error("links error:", e);
+    console.error("links index error:", e);
     return res.status(500).json({ error: "server error" });
   }
 }

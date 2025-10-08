@@ -25,10 +25,7 @@ export default async function handler(req, res) {
     if (byName.length) return res.status(409).json({ error: "user_name already exists" });
     if (byEmail.length) return res.status(409).json({ error: "user_email already exists" });
 
-    const hash = await bcrypt.hash(user_password, 10);
-    const now = new Date().toISOString();
-    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(s => s.trim().toLowerCase());
-    const role = adminEmails.includes(user_email.toLowerCase()) ? "admin" : "user";
+    const role = roleFor(rec.fields.user_email, rec.fields.role);
 
     const rec = await gristInsert(process.env.USERS_TABLE, {
       user_name,

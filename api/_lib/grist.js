@@ -1,7 +1,7 @@
 // api/_lib/grist.js
 import axios from "axios";
 
-// Build config lazily so Vercel can import without envs during build.
+/** Lazily creates an axios client and caches config */
 let client = null;
 let CFG = null;
 
@@ -21,17 +21,11 @@ function ensureClient() {
     base: rawBase.replace(/\/+$/, ""),
     key: must("GRIST_API_KEY"),
     doc: must("GRIST_DOC_ID"),
-    tables: {
-      USERS: must("USERS_TABLE"),
-      LINKS: must("LINKS_TABLE")
-    }
+    tables: { USERS: must("USERS_TABLE"), LINKS: must("LINKS_TABLE") }
   };
   client = axios.create({
     baseURL: CFG.base,
-    headers: {
-      Authorization: `Bearer ${CFG.key}`,
-      "Content-Type": "application/json"
-    },
+    headers: { Authorization: `Bearer ${CFG.key}`, "Content-Type": "application/json" },
     timeout: 15000
   });
 }
@@ -42,6 +36,7 @@ export const TABLES = new Proxy({}, {
 
 const tableUrl = (t) => { ensureClient(); return `/docs/${CFG.doc}/tables/${t}/records`; };
 
+/** Query by field filters (values can be scalar or array) */
 export async function gristQuery(table, filter = {}) {
   ensureClient();
   const has = filter && Object.keys(filter).length > 0;

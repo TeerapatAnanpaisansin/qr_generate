@@ -27,10 +27,7 @@ export default async function handler(req, res) {
     const ok = await bcrypt.compare(user_password, rec.fields.password_hash || "");
     if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-    const email = (rec.fields.user_email || "").toLowerCase();
-    const dbRole = rec.fields.role || "user";
-    const adminEmails = (process.env.ADMIN_EMAILS || "").split(",").map(s => s.trim().toLowerCase());
-    const role = dbRole === "admin" || adminEmails.includes(email) ? "admin" : "user";
+    const role = roleFor(rec.fields.user_email, rec.fields.role);
 
     const now = new Date().toISOString();
     await gristUpdateById(process.env.USERS_TABLE, rec.id, { login_date: now });
