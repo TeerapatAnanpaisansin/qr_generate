@@ -27,36 +27,66 @@
       />
     </div>
 
-    <div class="mt-8 rounded-2xl bg-white p-4 shadow">
-      <div class="mb-3 flex items-center justify-between px-2">
-        <h3 class="text-lg font-semibold">History</h3>
-        <button class="rounded-lg px-3 py-1 bg-[#19B4AC] text-white hover:bg-gray-50" @click="loadLinks">Refresh</button>
+    <!-- History Table -->
+    <div class="justify content-center mt-10 mb-10 w-[1300px] max-w-[2000px] bg-white backdrop-blur-lg p-6 rounded-lg shadow-lg">
+      <div class="flex justify-between items-center mb-2">
+        <h3 class="text-lg font-bold text-gray-600">History</h3>
+        <button 
+          @click="loadLinks"
+          class="text-sm bg-[#19B4AC] hover:bg-[#139690] text-white px-3 py-1 rounded-lg">
+          Refresh
+        </button>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="min-w-full table-fixed">
-          <thead>
-            <tr class="bg-[#19B4AC] text-left text-white">
-              <th class="w-[60%] px-3 py-2">Full Url</th>
-              <th class="w-[25%] px-3 py-2">Short Url</th>
-              <th class="w-[10%] px-3 py-2">Clicks</th>
-              <th class="w-[5%] px-3 py-2"></th>
+      <div class="overflow-x-auto rounded-t-lg">
+        <table class="w-full text-white text-sm text-center">
+          <thead class="bg-[#19B4AC] border-collapse border-2 border-[#19B4AC]">
+            <tr>
+              <th class="px-20 py-2">Full Url</th>
+              <th class="px-14 py-2 w-[200px]">Short Url</th>
+              <th class="px-4 py-2 w-[50px]">Clicks</th>
+              <th v-if="role === 'admin'" class="px-6 py-2 w-[80px]">User</th>
+              <th class="px-4 py-2 w-[50px]"></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-if="!links.length">
-              <td colspan="4" class="px-3 py-6 text-center text-gray-400">No links yet</td>
+            <!-- If no links, show a placeholder row -->
+            <tr v-if="links.length === 0">
+              <td :colspan="role === 'admin' ? 5 : 4" class="text-gray-400 border-2 border-gray-200 px-3 py-8 text-center">
+                No links yet
+              </td>
             </tr>
-            <tr v-for="l in links" :key="l.id ?? l.code" class="border-b">
-              <td class="truncate px-3 py-2">
-                <a :href="l.full_url" class="text-[#19B4AC] hover:underline" target="_blank">{{ l.full_url }}</a>
+
+            <!-- Loop through links and display each one -->
+            <tr v-for="link in links" :key="link.id ?? link.code" class="hover:bg-gray-50">
+              <td class="text-left text-gray-600 border-2 border-gray-200 px-3 py-2 max-w-[400px] break-words">
+                {{ link.full_url }}
               </td>
-              <td class="truncate px-3 py-2">
-                <a :href="l.short_url" class="text-[#19B4AC] hover:underline" target="_blank">{{ l.short_url }}</a>
+
+              <td class="border-2 border-gray-200 px-3 py-2">
+                <a :href="link.short_url" target="_blank" class="text-teal-600 underline">
+                  {{ link.short_url }}
+                </a>
               </td>
-              <td class="px-3 py-2">{{ l.clicks }}</td>
-              <td class="px-3 py-2 text-right">
-                <button class="rounded-md px-2 py-1 text-red-600 hover:bg-red-50" @click="removeLink(l)">Delete</button>
+
+              <td class="text-gray-600 border-2 border-gray-200 px-3 py-2 text-center min-w-[50px]">
+                {{ link.clicks }}
+              </td>
+
+              <!-- Show the owner column only for admin -->
+              <td v-if="role === 'admin'" class="border-2 border-gray-200 px-3 py-2 text-gray-600">
+                <template v-if="link.owner">
+                  {{ link.owner.user_name }} ({{ link.owner.user_email }})
+                </template>
+                <template v-else>
+                  <span class="text-gray-400">Unknown</span>
+                </template>
+              </td>
+
+              <td class="border-2 border-gray-200 px-3 py-2 text-center">
+                <button @click="removeLink(link)" class="text-red-600 hover:underline">
+                  Delete
+                </button>
               </td>
             </tr>
           </tbody>
@@ -78,6 +108,8 @@ const loading = ref(false)
 const toastOpen = ref(false)
 const toastType = ref('success')
 const toastMessage = ref('')
+
+const role = ref(localStorage.getItem('role') || 'user')
 
 function showToast(type, msg) {
   toastType.value = type
