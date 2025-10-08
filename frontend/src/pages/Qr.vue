@@ -1,9 +1,10 @@
 <template>
-  <div class="justify content-center mx-auto max-w-full p-6">
+  <div class="min-h-screen bg-gray-200 p-4 sm:p-6">
+    <!-- Generator Card -->
     <div class="mx-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow">
-      <h2 class="mb-4 text-center text-2xl font-semibold">QR Generator</h2>
+      <h2 class="mb-4 text-center text-2xl font-bold text-gray-600">QR Generator</h2>
 
-      <label class="mb-2 block text-sm font-medium">Enter URL</label>
+      <label class="mb-2 block text-lg font-bold text-gray-600">Enter URL</label>
       <input
         v-model="url"
         type="url"
@@ -28,63 +29,94 @@
     </div>
 
     <!-- History Table -->
-    <div class="justify content-center mt-10 mb-10 w-full max-w-[2000px] bg-white backdrop-blur-lg p-6 rounded-lg shadow-lg mx-auto">
-      <div class="flex justify-between items-center mb-2">
+    <div class="mt-10 mb-10 w-full max-w-[1400px] bg-white p-4 sm:p-6 rounded-lg shadow-lg mx-auto">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
         <h3 class="text-lg font-bold text-gray-600">History</h3>
         <button 
           @click="loadLinks"
-          class="text-sm bg-[#19B4AC] hover:bg-[#139690] text-white px-3 py-1 rounded-lg">
+          class="text-sm bg-[#19B4AC] hover:bg-[#139690] text-white px-3 py-1 rounded-lg w-full sm:w-auto">
           Refresh
         </button>
       </div>
 
-      <div class="overflow-x-auto rounded-t-lg">
-        <table class="w-full text-white text-sm text-center mx-auto">
-          <thead class="bg-[#19B4AC] border-collapse border-2 border-[#19B4AC]">
+      <!-- Mobile Card View -->
+      <div class="block sm:hidden space-y-4">
+        <div v-if="links.length === 0" class="text-gray-400 text-center py-8">
+          No links yet
+        </div>
+        <div v-for="link in links" :key="link.id ?? link.code" class="border-2 border-gray-200 rounded-lg p-4">
+          <div class="space-y-2">
+            <div>
+              <p class="text-xs text-gray-500 font-semibold">Full URL</p>
+              <p class="text-sm text-gray-700 break-all">{{ link.full_url }}</p>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500 font-semibold">Short URL</p>
+              <a :href="link.short_url" target="_blank" class="text-sm text-teal-600 underline break-all">
+                {{ link.short_url }}
+              </a>
+            </div>
+            <div class="flex justify-between items-center">
+              <div>
+                <p class="text-xs text-gray-500 font-semibold">Clicks</p>
+                <p class="text-sm text-gray-700">{{ link.clicks }}</p>
+              </div>
+              <div v-if="role === 'admin' && link.owner">
+                <p class="text-xs text-gray-500 font-semibold">User</p>
+                <p class="text-sm text-gray-700">{{ link.owner.user_name }}</p>
+              </div>
+              <button @click="removeLink(link)" class="text-red-600 hover:underline text-sm font-semibold">
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Table View -->
+      <div class="hidden sm:block overflow-x-auto rounded-lg">
+        <table class="w-full text-sm text-center">
+          <thead class="bg-[#19B4AC] text-white">
             <tr>
-              <th class="px-20 py-2">Full Url</th>
-              <th class="px-14 py-2 w-[200px]">Short Url</th>
-              <th class="px-4 py-2 w-[50px]">Clicks</th>
-              <th v-if="role === 'admin'" class="px-6 py-2 w-[80px]">User</th>
-              <th class="px-4 py-2 w-[50px]"></th>
+              <th class="px-4 py-3 text-left">Full URL</th>
+              <th class="px-4 py-3">Short URL</th>
+              <th class="px-4 py-3">Clicks</th>
+              <th v-if="role === 'admin'" class="px-4 py-3">User</th>
+              <th class="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
-            <!-- If no links, show a placeholder row -->
             <tr v-if="links.length === 0">
               <td :colspan="role === 'admin' ? 5 : 4" class="text-gray-400 border-2 border-gray-200 px-3 py-8 text-center">
                 No links yet
               </td>
             </tr>
 
-            <!-- Loop through links and display each one -->
-            <tr v-for="link in links" :key="link.id ?? link.code" class="hover:bg-gray-50">
-              <td class="text-left text-gray-600 border-2 border-gray-200 px-3 py-2 max-w-[400px] break-words">
+            <tr v-for="link in links" :key="link.id ?? link.code" class="hover:bg-gray-50 border-b border-gray-200">
+              <td class="text-left text-gray-600 px-4 py-3 max-w-[300px] truncate" :title="link.full_url">
                 {{ link.full_url }}
               </td>
 
-              <td class="border-2 border-gray-200 px-3 py-2">
-                <a :href="link.short_url" target="_blank" class="text-teal-600 underline">
+              <td class="px-4 py-3">
+                <a :href="link.short_url" target="_blank" class="text-teal-600 underline hover:text-teal-800">
                   {{ link.short_url }}
                 </a>
               </td>
 
-              <td class="text-gray-600 border-2 border-gray-200 px-3 py-2 text-center min-w-[50px]">
+              <td class="text-gray-600 px-4 py-3 text-center">
                 {{ link.clicks }}
               </td>
 
-              <!-- Show the owner column only for admin -->
-              <td v-if="role === 'admin'" class="sm:block hidden border-2 border-gray-200 px-3 py-2 text-gray-600">
+              <td v-if="role === 'admin'" class="px-4 py-3 text-gray-600">
                 <template v-if="link.owner">
-                  {{ link.owner.user_name }} ({{ link.owner.user_email }})
+                  <div class="text-sm">{{ link.owner.user_name }}</div>
+                  <div class="text-xs text-gray-500">{{ link.owner.user_email }}</div>
                 </template>
-                <template v-else>
-                  <span class="text-gray-400">Unknown</span>
-                </template>
+                <span v-else class="text-gray-400">Unknown</span>
               </td>
 
-              <td class="border-2 border-gray-200 px-3 py-2 text-center">
-                <button @click="removeLink(link)" class="text-red-600 hover:underline">
+              <td class="px-4 py-3 text-center">
+                <button @click="removeLink(link)" class="text-red-600 hover:underline font-medium">
                   Delete
                 </button>
               </td>
@@ -93,7 +125,6 @@
         </table>
       </div>
     </div>
-
   </div>
 </template>
 
@@ -112,25 +143,37 @@ const toastMessage = ref('')
 
 const role = ref(localStorage.getItem('role') || 'user')
 
+/**
+ * Display toast notification
+ * @param {string} type - Notification type (success, error, info)
+ * @param {string} msg - Message to display
+ */
 function showToast(type, msg) {
   toastType.value = type
   toastMessage.value = msg
   toastOpen.value = true
 }
 
+/**
+ * Fetch all links for current user (or all links if admin)
+ */
 async function loadLinks() {
   try {
     const data = await listLinks()
     links.value = Array.isArray(data) ? data : []
   } catch (e) {
-    console.error('load links failed:', e)
+    console.error('Load links failed:', e)
     showToast('error', 'Failed to load links')
   }
 }
 
+/**
+ * Generate short link from provided URL
+ */
 async function generate() {
   const real = url.value?.trim()
   if (!real) return showToast('error', 'Please enter a URL')
+  
   loading.value = true
   try {
     const res = await createLink({ real_url: real })
@@ -145,15 +188,20 @@ async function generate() {
   }
 }
 
+/**
+ * Delete a link by ID or code
+ * @param {object} link - Link object to delete
+ */
 async function removeLink(link) {
   const key = link?.id ?? link?.code
   if (!key) return showToast('error', 'Cannot delete: missing identifier')
 
   if (!confirm(`Delete ${link.short_url || link.code}?`)) return
+  
   try {
     await deleteLink(key)
     await loadLinks()
-    showToast('success', 'Link deleted.')
+    showToast('success', 'Link deleted successfully')
   } catch (e) {
     const msg = e?.response?.data?.error || 'Delete failed'
     showToast('error', msg)
@@ -162,4 +210,3 @@ async function removeLink(link) {
 
 onMounted(loadLinks)
 </script>
-

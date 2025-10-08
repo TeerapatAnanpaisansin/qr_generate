@@ -1,96 +1,176 @@
-// api/links/index.js
+// qr_generate/api/links/index.js
+
 import { z } from "zod";
 import { nanoid } from "nanoid";
 import { authenticate } from "../_lib/auth.js";
 import { setCors, getBaseUrl } from "../_lib/http.js";
 import { gristInsert, gristQuery, TABLES } from "../_lib/grist.js";
 
+const ADMIN_ROLE = "admin";
+const MIN_CODE_LENGTH = 4;
+const MAX_CODE_LENGTH = 32;
+const DEFAULT_CODE_LENGTH = 8;
+
 const createSchema = z.object({
   real_url: z.string().url(),
-  code: z.string().min(4).max(32).optional()
+  code: z.string().min(MIN_CODE_LENGTH).max(MAX_CODE_LENGTH).optional()
 });
 
-function resolveUserId(val) {
-  if (val == null) return null;
-  if (typeof val === "number") return val;
-  if (typeof val === "string") {
-    const m = val.match(/\[(\d+)\]$/);
-    if (m) return Number(m[1]);
-    const n = Number(val);
-    return Number.isNaN(n) ? null : n;
+function extractUserIdFromGristField(gristUserIdField) {
+  if (gristUserIdField == null) return null;
+  if (typeof gristUserIdField === "number") return gristUserIdField;
+  
+  if (typeof gristUserIdField === "string") {
+    const referenceMatch = gristUserIdField.match(/\[(\d+)\]$/);
+    if (referenceMatch) return Number(referenceMatch[1]);
+    
+    const directNumber = Number(gristUserIdField);
+    return Number.isNaN(directNumber) ? null : directNumber;
   }
-  if (Array.isArray(val)) return Number(val[val.length - 1]) || null;
-  if (typeof val === "object" && "id" in val) return Number(val.id) || null;
+  
+  if (Array.isArray(gristUserIdField)) {
+    return Number(gristUserIdField[gristUserIdField.length - 1]) || null;
+  }
+  
+  if (typeof gristUserIdField === "object" && "id" in gristUserIdField) {
+    return Number(gristUserIdField.id) || null;
+  }
+  
   return null;
 }
 
-function visibleRow(r) {
-  const f = r.fields || {};
-  if (f.deleted === true) return false;
-  if (typeof f.clicks === "number" && f.clicks < 0) return false;
-  if (String(f.code || "").startsWith("del_")) return false;
+function isLinkVisible(linkRecord) {
+  const fields = linkRecord.fields || {};
+  
+  if (fields.deleted === true) return false;
+  if (typeof fields.clicks === "number" && fields.clicks < 0) return false;
+  if (String(fields.code || "").startsWith("del_")) return false;
+  
   return true;
+}
+
+function createUserLookupMap(userRecords) {
+  const userMap = {};
+  
+  for (const userRecord of userRecords) {
+    const userId = userRecord.id;
+    const fields = userRecord.fields || {};
+    
+    userMap[userId] = {
+      user_name: fields.user_name || "Unknown",
+      user_email: fields.user_email || ""
+    };
+  }
+  
+  return userMap;
+}
+
+function filterLinksByOwnership(allLinks, currentUserId, isAdmin) {
+  if (isAdmin) return allLinks;
+  
+  return allLinks.filter(linkRecord => {
+    const linkOwnerId = extractUserIdFromGristField(linkRecord.fields?.user_id);
+    return linkOwnerId === currentUserId;
+  });
+}
+
+function buildLinkResponse(linkRecord, baseUrl, userLookupMap, isAdmin) {
+  const fields = linkRecord.fields || {};
+  const linkCode = fields.code || "";
+  const linkOwnerId = extractUserIdFromGristField(fields.user_id);
+  
+  const response = {
+    id: linkRecord.id,
+    full_url: fields.real_url || "",
+    code: linkCode,
+    short_url: `${baseUrl}/u/${linkCode}`,
+    clicks: Number(fields.clicks) || 0
+  };
+
+  if (isAdmin && linkOwnerId && userLookupMap[linkOwnerId]) {
+    response.owner = userLookupMap[linkOwnerId];
+  }
+
+  return response;
+}
+
+async function handleCreateLink(requestBody, currentUser, baseUrl) {
+  const { real_url, code } = createSchema.parse(requestBody);
+  const shortCode = code || nanoid(DEFAULT_CODE_LENGTH);
+
+  const existingLinks = await gristQuery(TABLES.LINKS, { code: shortCode });
+  if (existingLinks.length > 0) {
+    throw new Error("CODE_EXISTS");
+  }
+
+  const newLinkRecord = await gristInsert(TABLES.LINKS, {
+    user_id: Number(currentUser.id),
+    code: shortCode,
+    real_url,
+    created_date: new Date().toISOString(),
+    clicks: 0
+  });
+
+  return {
+    id: newLinkRecord.id,
+    code: shortCode,
+    real_url,
+    short_url: `${baseUrl}/u/${shortCode}`
+  };
+}
+
+async function handleGetLinks(currentUser, baseUrl) {
+  const isAdmin = currentUser.role === ADMIN_ROLE;
+  
+  const allLinks = await gristQuery(TABLES.LINKS, {});
+  const allUsers = isAdmin ? await gristQuery(TABLES.USERS, {}) : [];
+  
+  const userLookupMap = isAdmin ? createUserLookupMap(allUsers) : {};
+  
+  const userLinks = filterLinksByOwnership(allLinks, Number(currentUser.id), isAdmin);
+  const visibleLinks = userLinks.filter(isLinkVisible);
+  
+  const linkResponses = visibleLinks.map(linkRecord => 
+    buildLinkResponse(linkRecord, baseUrl, userLookupMap, isAdmin)
+  );
+
+  return linkResponses;
 }
 
 export default async function handler(req, res) {
   if (setCors(req, res)) return;
 
   try {
-    const user = await authenticate(req);
+    const currentUser = await authenticate(req);
     const baseUrl = getBaseUrl(req);
 
     if (req.method === "POST") {
-      const { real_url, code } = createSchema.parse(req.body || {});
-      const shortCode = code || nanoid(8);
-
-      const exists = await gristQuery(TABLES.LINKS, { code: shortCode });
-      if (exists.length) return res.status(409).json({ error: "code already exists" });
-
-      const rec = await gristInsert(TABLES.LINKS, {
-        user_id: Number(user.id),
-        code: shortCode,
-        real_url,
-        created_date: new Date().toISOString(),
-        clicks: 0
-      });
-
-      return res.status(201).json({
-        id: rec.id,
-        code: shortCode,
-        real_url,
-        short_url: `${baseUrl}/u/${shortCode}`
-      });
+      const createdLink = await handleCreateLink(req.body || {}, currentUser, baseUrl);
+      return res.status(201).json(createdLink);
     }
 
     if (req.method === "GET") {
-      const all = await gristQuery(TABLES.LINKS, {});
-      const rows = (user.role === "admin")
-        ? all
-        : all.filter(r => resolveUserId(r.fields?.user_id) === Number(user.id));
-
-      const visible = rows.filter(visibleRow);
-
-      const out = visible.map(r => ({
-        id: r.id,
-        full_url: r.fields?.real_url || "",
-        code: r.fields?.code || "",
-        short_url: `${baseUrl}/u/${r.fields?.code || ""}`,
-        clicks: Number(r.fields?.clicks) || 0
-      }));
-
-      return res.json(out);
+      const links = await handleGetLinks(currentUser, baseUrl);
+      return res.json(links);
     }
 
     res.setHeader("Allow", "GET,POST,OPTIONS");
     return res.status(405).json({ error: "method not allowed" });
-  } catch (e) {
-    if (e.message === "No token" || e.message === "User not found") {
+    
+  } catch (error) {
+    if (error.message === "No token" || error.message === "User not found") {
       return res.status(401).json({ error: "unauthorized" });
     }
-    if (e instanceof z.ZodError) {
-      return res.status(400).json({ error: e.errors });
+    
+    if (error.message === "CODE_EXISTS") {
+      return res.status(409).json({ error: "code already exists" });
     }
-    console.error("links index error:", e);
+    
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ error: error.errors });
+    }
+    
+    console.error("links index error:", error);
     return res.status(500).json({ error: "server error" });
   }
 }

@@ -1,4 +1,3 @@
-// frontend/src/main.js
 import { createApp } from 'vue'
 import { createWebHistory, createRouter } from 'vue-router'
 import './styles/global.css'
@@ -7,8 +6,9 @@ import Login from './pages/Login.vue'
 import Register from './pages/Register.vue'
 import Qr from './pages/Qr.vue'
 import Icon from '@/components/Icon.vue'
-import { setToken } from '@/api/api.js'
+import { setToken, clearAuth } from '@/api/api.js'
 
+// Restore saved JWT token
 const saved = localStorage.getItem('jwt')
 if (saved) setToken(saved)
 
@@ -25,6 +25,9 @@ const router = createRouter({
   routes,
 })
 
+/**
+ * Navigation guard - redirect unauthenticated users to login
+ */
 router.beforeEach((to) => {
   const authed = Boolean(localStorage.getItem('jwt'))
   if (!to.meta.public && !authed) return { path: '/login' }
@@ -36,3 +39,11 @@ const app = createApp(App)
 app.use(router)
 app.component('Icon', Icon)
 app.mount('#app')
+
+/**
+ * Logout user when tab/window is closed
+ * This ensures security by clearing authentication tokens
+ */
+window.addEventListener('beforeunload', () => {
+  clearAuth()
+})
