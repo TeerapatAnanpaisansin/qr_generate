@@ -1,6 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-gray-200">    
-    <!-- <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-sm"> -->
+  <div class="min-h-screen flex items-center justify-center bg-gray-200">
     <div class="flex flex-col w-[400px] bg-white p-6 mt-10 shadow-lg backdrop-blur-lg rounded-2xl"> 
       <h2 class="text-2xl font-bold font-sans mb-6 text-center text-[#19B4AC]">Welcome Back!</h2>
 

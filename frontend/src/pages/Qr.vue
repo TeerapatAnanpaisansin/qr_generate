@@ -11,7 +11,7 @@
         class="w-full rounded-lg border-2 border-gray-200 px-3 py-2 focus:border-teal-500 focus:outline-none"
       />
       <button
-        class="mt-4 w-full rounded-lg bg-teal-600 px-4 py-2 font-medium text-white hover:bg-teal-700 disabled:opacity-60"
+        class="mt-4 w-full rounded-lg bg-[#19B4AC] px-4 py-2 font-medium text-white hover:bg-teal-700 disabled:opacity-60"
         :disabled="loading"
         @click="generate"
       >
@@ -30,13 +30,13 @@
     <div class="mt-8 rounded-2xl bg-white p-4 shadow">
       <div class="mb-3 flex items-center justify-between px-2">
         <h3 class="text-lg font-semibold">History</h3>
-        <button class="rounded-lg border px-3 py-1 hover:bg-gray-50" @click="loadLinks">Refresh</button>
+        <button class="rounded-lg px-3 py-1 bg-[#19B4AC] text-white hover:bg-gray-50" @click="loadLinks">Refresh</button>
       </div>
 
       <div class="overflow-x-auto">
         <table class="min-w-full table-fixed">
           <thead>
-            <tr class="bg-teal-600 text-left text-white">
+            <tr class="bg-[#19B4AC] text-left text-white">
               <th class="w-[60%] px-3 py-2">Full Url</th>
               <th class="w-[25%] px-3 py-2">Short Url</th>
               <th class="w-[10%] px-3 py-2">Clicks</th>
@@ -49,10 +49,10 @@
             </tr>
             <tr v-for="l in links" :key="l.id ?? l.code" class="border-b">
               <td class="truncate px-3 py-2">
-                <a :href="l.full_url" class="text-teal-700 hover:underline" target="_blank">{{ l.full_url }}</a>
+                <a :href="l.full_url" class="text-[#19B4AC] hover:underline" target="_blank">{{ l.full_url }}</a>
               </td>
               <td class="truncate px-3 py-2">
-                <a :href="l.short_url" class="text-teal-700 hover:underline" target="_blank">{{ l.short_url }}</a>
+                <a :href="l.short_url" class="text-[#19B4AC] hover:underline" target="_blank">{{ l.short_url }}</a>
               </td>
               <td class="px-3 py-2">{{ l.clicks }}</td>
               <td class="px-3 py-2 text-right">
