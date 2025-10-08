@@ -1,5 +1,5 @@
 <template>
-  <div class="justify content-center mx-auto max-w-5xl p-6">
+  <div class="justify content-center mx-auto max-w-full p-6">
     <div class="mx-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow">
       <h2 class="mb-4 text-center text-2xl font-semibold">QR Generator</h2>
 
