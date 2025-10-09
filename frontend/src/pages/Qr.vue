@@ -21,8 +21,8 @@
 
       <!-- QR Code Display -->
       <div v-if="qrCodeUrl" class="mt-6 flex flex-col items-center">
-        <div class="rounded-lg bg-white p-4 shadow-md">
-          <img :src="qrCodeUrl" alt="QR Code" class="w-64 h-64" />
+        <div class="rounded-lg bg-white p-4 shadow-md relative">
+          <canvas ref="qrCanvas" class="w-64 h-64"></canvas>
         </div>
         <p class="mt-3 text-sm text-gray-600 text-center break-all">
           {{ currentShortUrl }}
@@ -171,6 +171,7 @@ const loading = ref(false)
 const qrCodeUrl = ref('')
 const currentShortUrl = ref('')
 const copied = ref(false)
+const qrCanvas = ref(null)
 
 const toastOpen = ref(false)
 const toastType = ref('success')
@@ -179,13 +180,63 @@ const toastMessage = ref('')
 const role = ref(localStorage.getItem('role') || 'user')
 
 /**
- * Generate QR code from URL using QR code API
+ * Generate QR code with logo overlay on canvas
  */
-function generateQRCode(shortUrl) {
+async function generateQRCodeWithLogo(shortUrl) {
+  const QR_SIZE = 256
+  const LOGO_SIZE = 60
   const API_BASE = 'https://api.qrserver.com/v1/create-qr-code/'
-  const size = '256x256'
   const encoded = encodeURIComponent(shortUrl)
-  return `${API_BASE}?size=${size}&data=${encoded}`
+  const qrUrl = `${API_BASE}?size=${QR_SIZE}x${QR_SIZE}&data=${encoded}`
+
+  try {
+    const canvas = qrCanvas.value
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d')
+    canvas.width = QR_SIZE
+    canvas.height = QR_SIZE
+
+    // Load QR code image
+    const qrImage = await loadImage(qrUrl)
+    ctx.drawImage(qrImage, 0, 0, QR_SIZE, QR_SIZE)
+
+    // Load and draw logo in center with white background
+    const logo = await loadImage('/Logo.png')
+    
+    const logoX = (QR_SIZE - LOGO_SIZE) / 2
+    const logoY = (QR_SIZE - LOGO_SIZE) / 2
+    const padding = 8
+
+    // Draw white background for logo
+    ctx.fillStyle = 'white'
+    ctx.fillRect(
+      logoX - padding,
+      logoY - padding,
+      LOGO_SIZE + padding * 2,
+      LOGO_SIZE + padding * 2
+    )
+
+    // Draw logo
+    ctx.drawImage(logo, logoX, logoY, LOGO_SIZE, LOGO_SIZE)
+
+  } catch (error) {
+    console.error('Failed to generate QR with logo:', error)
+    showToast('error', 'Failed to load logo')
+  }
+}
+
+/**
+ * Load image helper function
+ */
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
 }
 
 /**
@@ -223,7 +274,11 @@ async function generate() {
     await loadLinks()
     
     currentShortUrl.value = res.short_url
-    qrCodeUrl.value = generateQRCode(res.short_url)
+    qrCodeUrl.value = 'generating'
+    
+    // Wait for next tick to ensure canvas is rendered
+    await new Promise(resolve => setTimeout(resolve, 0))
+    await generateQRCodeWithLogo(res.short_url)
     
     showToast('success', 'QR Code generated successfully!')
     url.value = ''
@@ -238,9 +293,13 @@ async function generate() {
 /**
  * View QR code for existing link
  */
-function viewQR(link) {
+async function viewQR(link) {
   currentShortUrl.value = link.short_url
-  qrCodeUrl.value = generateQRCode(link.short_url)
+  qrCodeUrl.value = 'generating'
+  
+  await new Promise(resolve => setTimeout(resolve, 0))
+  await generateQRCodeWithLogo(link.short_url)
+  
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
@@ -248,12 +307,19 @@ function viewQR(link) {
  * Download QR code as image
  */
 function downloadQR() {
-  const a = document.createElement('a')
-  a.href = qrCodeUrl.value
-  a.download = `qr-${Date.now()}.png`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  const canvas = qrCanvas.value
+  if (!canvas) return
+
+  canvas.toBlob((blob) => {
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `qr-code-${Date.now()}.png`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  })
 }
 
 /**
