@@ -184,7 +184,7 @@ const role = ref(localStorage.getItem('role') || 'user')
  */
 async function generateQRCodeWithLogo(shortUrl) {
   const QR_SIZE = 256
-  const LOGO_SIZE = 60
+  const LOGO_MAX_SIZE = 50
   const API_BASE = 'https://api.qrserver.com/v1/create-qr-code/'
   const encoded = encodeURIComponent(shortUrl)
   const qrUrl = `${API_BASE}?size=${QR_SIZE}x${QR_SIZE}&data=${encoded}`
@@ -201,24 +201,48 @@ async function generateQRCodeWithLogo(shortUrl) {
     const qrImage = await loadImage(qrUrl)
     ctx.drawImage(qrImage, 0, 0, QR_SIZE, QR_SIZE)
 
-    // Load and draw logo in center with white background
+    // Load logo and calculate dimensions to fit
     const logo = await loadImage('/Logo.png')
     
-    const logoX = (QR_SIZE - LOGO_SIZE) / 2
-    const logoY = (QR_SIZE - LOGO_SIZE) / 2
-    const padding = 8
+    // Calculate aspect ratio and fit within max size
+    const aspectRatio = logo.width / logo.height
+    let logoWidth, logoHeight
+    
+    if (aspectRatio > 1) {
+      logoWidth = LOGO_MAX_SIZE
+      logoHeight = LOGO_MAX_SIZE / aspectRatio
+    } else {
+      logoHeight = LOGO_MAX_SIZE
+      logoWidth = LOGO_MAX_SIZE * aspectRatio
+    }
+    
+    const logoX = (QR_SIZE - logoWidth) / 2
+    const logoY = (QR_SIZE - logoHeight) / 2
+    const padding = 6
 
-    // Draw white background for logo
+    // Draw white rounded background for logo
     ctx.fillStyle = 'white'
-    ctx.fillRect(
-      logoX - padding,
-      logoY - padding,
-      LOGO_SIZE + padding * 2,
-      LOGO_SIZE + padding * 2
-    )
+    const bgX = logoX - padding
+    const bgY = logoY - padding
+    const bgWidth = logoWidth + padding * 2
+    const bgHeight = logoHeight + padding * 2
+    const radius = 4
+    
+    ctx.beginPath()
+    ctx.moveTo(bgX + radius, bgY)
+    ctx.lineTo(bgX + bgWidth - radius, bgY)
+    ctx.quadraticCurveTo(bgX + bgWidth, bgY, bgX + bgWidth, bgY + radius)
+    ctx.lineTo(bgX + bgWidth, bgY + bgHeight - radius)
+    ctx.quadraticCurveTo(bgX + bgWidth, bgY + bgHeight, bgX + bgWidth - radius, bgY + bgHeight)
+    ctx.lineTo(bgX + radius, bgY + bgHeight)
+    ctx.quadraticCurveTo(bgX, bgY + bgHeight, bgX, bgY + bgHeight - radius)
+    ctx.lineTo(bgX, bgY + radius)
+    ctx.quadraticCurveTo(bgX, bgY, bgX + radius, bgY)
+    ctx.closePath()
+    ctx.fill()
 
     // Draw logo
-    ctx.drawImage(logo, logoX, logoY, LOGO_SIZE, LOGO_SIZE)
+    ctx.drawImage(logo, logoX, logoY, logoWidth, logoHeight)
 
   } catch (error) {
     console.error('Failed to generate QR with logo:', error)
