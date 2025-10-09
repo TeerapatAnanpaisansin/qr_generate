@@ -16,8 +16,32 @@
         :disabled="loading"
         @click="generate"
       >
-        {{ loading ? 'Generating…' : 'Generate' }}
+        {{ loading ? 'Generating…' : 'Generate QR Code' }}
       </button>
+
+      <!-- QR Code Display -->
+      <div v-if="qrCodeUrl" class="mt-6 flex flex-col items-center">
+        <div class="rounded-lg bg-white p-4 shadow-md">
+          <img :src="qrCodeUrl" alt="QR Code" class="w-64 h-64" />
+        </div>
+        <p class="mt-3 text-sm text-gray-600 text-center break-all">
+          {{ currentShortUrl }}
+        </p>
+        <div class="mt-3 flex gap-2">
+          <button
+            @click="downloadQR"
+            class="rounded-lg bg-[#19B4AC] px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+          >
+            Download QR
+          </button>
+          <button
+            @click="copyToClipboard"
+            class="rounded-lg bg-gray-600 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700"
+          >
+            {{ copied ? 'Copied!' : 'Copy URL' }}
+          </button>
+        </div>
+      </div>
 
       <DeleteNotification
         v-if="toastOpen"
@@ -65,9 +89,14 @@
                 <p class="text-xs text-gray-500 font-semibold">User</p>
                 <p class="text-sm text-gray-700">{{ link.owner.user_name }}</p>
               </div>
-              <button @click="removeLink(link)" class="text-red-600 hover:underline text-sm font-semibold">
-                Delete
-              </button>
+              <div class="flex gap-2">
+                <button @click="viewQR(link)" class="text-[#19B4AC] hover:underline text-sm font-semibold">
+                  View QR
+                </button>
+                <button @click="removeLink(link)" class="text-red-600 hover:underline text-sm font-semibold">
+                  Delete
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -116,6 +145,9 @@
               </td>
 
               <td class="px-4 py-3 text-center">
+                <button @click="viewQR(link)" class="text-[#19B4AC] hover:underline font-medium mr-3">
+                  View QR
+                </button>
                 <button @click="removeLink(link)" class="text-red-600 hover:underline font-medium">
                   Delete
                 </button>
@@ -136,6 +168,9 @@ import DeleteNotification from '@/components/delete_notification.vue'
 const url = ref('')
 const links = ref([])
 const loading = ref(false)
+const qrCodeUrl = ref('')
+const currentShortUrl = ref('')
+const copied = ref(false)
 
 const toastOpen = ref(false)
 const toastType = ref('success')
@@ -144,9 +179,17 @@ const toastMessage = ref('')
 const role = ref(localStorage.getItem('role') || 'user')
 
 /**
+ * Generate QR code from URL using QR code API
+ */
+function generateQRCode(shortUrl) {
+  const API_BASE = 'https://api.qrserver.com/v1/create-qr-code/'
+  const size = '256x256'
+  const encoded = encodeURIComponent(shortUrl)
+  return `${API_BASE}?size=${size}&data=${encoded}`
+}
+
+/**
  * Display toast notification
- * @param {string} type - Notification type (success, error, info)
- * @param {string} msg - Message to display
  */
 function showToast(type, msg) {
   toastType.value = type
@@ -155,7 +198,7 @@ function showToast(type, msg) {
 }
 
 /**
- * Fetch all links for current user (or all links if admin)
+ * Fetch all links for current user
  */
 async function loadLinks() {
   try {
@@ -168,7 +211,7 @@ async function loadLinks() {
 }
 
 /**
- * Generate short link from provided URL
+ * Generate short link and display QR code
  */
 async function generate() {
   const real = url.value?.trim()
@@ -178,7 +221,11 @@ async function generate() {
   try {
     const res = await createLink({ real_url: real })
     await loadLinks()
-    showToast('success', `Shortened → ${res.short_url}`)
+    
+    currentShortUrl.value = res.short_url
+    qrCodeUrl.value = generateQRCode(res.short_url)
+    
+    showToast('success', 'QR Code generated successfully!')
     url.value = ''
   } catch (e) {
     const msg = e?.response?.data?.error || 'A server error has occurred'
@@ -189,8 +236,41 @@ async function generate() {
 }
 
 /**
- * Delete a link by ID or code
- * @param {object} link - Link object to delete
+ * View QR code for existing link
+ */
+function viewQR(link) {
+  currentShortUrl.value = link.short_url
+  qrCodeUrl.value = generateQRCode(link.short_url)
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+}
+
+/**
+ * Download QR code as image
+ */
+function downloadQR() {
+  const a = document.createElement('a')
+  a.href = qrCodeUrl.value
+  a.download = `qr-${Date.now()}.png`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+}
+
+/**
+ * Copy short URL to clipboard
+ */
+async function copyToClipboard() {
+  try {
+    await navigator.clipboard.writeText(currentShortUrl.value)
+    copied.value = true
+    setTimeout(() => { copied.value = false }, 2000)
+  } catch (e) {
+    showToast('error', 'Failed to copy URL')
+  }
+}
+
+/**
+ * Delete a link
  */
 async function removeLink(link) {
   const key = link?.id ?? link?.code
@@ -201,6 +281,12 @@ async function removeLink(link) {
   try {
     await deleteLink(key)
     await loadLinks()
+    
+    if (currentShortUrl.value === link.short_url) {
+      qrCodeUrl.value = ''
+      currentShortUrl.value = ''
+    }
+    
     showToast('success', 'Link deleted successfully')
   } catch (e) {
     const msg = e?.response?.data?.error || 'Delete failed'
