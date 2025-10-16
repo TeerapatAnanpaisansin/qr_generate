@@ -93,7 +93,7 @@
                 <button @click="viewQR(link)" class="text-[#19B4AC] hover:underline text-sm font-semibold">
                   View QR
                 </button>
-                <button @click="removeLink(link)" class="text-red-600 hover:underline text-sm font-semibold">
+                <button @click="askDelete(link.short_url)" class="text-red-600 hover:underline text-sm font-semibold">
                   Delete
                 </button>
               </div>
@@ -148,7 +148,7 @@
                 <button @click="viewQR(link)" class="text-[#19B4AC] hover:underline font-medium mr-3">
                   View QR
                 </button>
-                <button @click="removeLink(link)" class="text-red-600 hover:underline font-medium">
+                <button @click="askDelete(link.short_url)" class="text-red-600 hover:underline font-medium">
                   Delete
                 </button>
               </td>
@@ -157,6 +157,13 @@
         </table>
       </div>
     </div>
+    <ConfirmNotification
+      :show="showConfirm"
+      title="Delete Short Link"
+      :message="`Are you sure you want to delete ${deleteTarget}?`"
+      @cancel="showConfirm = false"
+      @confirm="confirmDelete"
+    />
   </div>
 </template>
 
@@ -164,6 +171,7 @@
 import { ref, onMounted } from 'vue'
 import { createLink, listLinks, deleteLink } from '@/api/api'
 import DeleteNotification from '@/components/delete_notification.vue'
+import ConfirmNotification from '@/components/confirm_notification.vue'
 
 const url = ref('')
 const links = ref([])
@@ -179,15 +187,55 @@ const toastMessage = ref('')
 
 const role = ref(localStorage.getItem('role') || 'user')
 
-/**
- * Generate QR code with logo overlay on canvas
- */
+const showConfirm = ref(false);
+const deleteTarget = ref(null);
+
+const askDelete = (shortUrl) => {
+  deleteTarget.value = shortUrl;
+  showConfirm.value = true;
+};
+
+const confirmDelete = async () => {
+  if (!deleteTarget.value) return
+  try {
+    await deleteLink(deleteTarget.value)
+    await loadLinks()
+    showToast('success', 'Link deleted successfully!')
+  } catch (e) {
+    showToast('error', 'Failed to delete link')
+    console.error(e)
+  } finally {
+    showConfirm.value = false
+    deleteTarget.value = null
+  }
+}
+
+/* Display toast notification */
+function showToast(type, msg) {
+  toastType.value = type
+  toastMessage.value = msg
+  toastOpen.value = true
+}
+
+/* Load image helper function */
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+}
+
+/* Generate QR code with logo overlay on canvas */
 async function generateQRCodeWithLogo(shortUrl) {
   const QR_SIZE = 256
   const LOGO_MAX_SIZE = 50
   const API_BASE = 'https://api.qrserver.com/v1/create-qr-code/'
   const encoded = encodeURIComponent(shortUrl)
   const qrUrl = `${API_BASE}?size=${QR_SIZE}x${QR_SIZE}&data=${encoded}`
+
 
   try {
     const canvas = qrCanvas.value
@@ -250,31 +298,7 @@ async function generateQRCodeWithLogo(shortUrl) {
   }
 }
 
-/**
- * Load image helper function
- */
-function loadImage(src) {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
-}
-
-/**
- * Display toast notification
- */
-function showToast(type, msg) {
-  toastType.value = type
-  toastMessage.value = msg
-  toastOpen.value = true
-}
-
-/**
- * Fetch all links for current user
- */
+/* Fetch all links for current user */
 async function loadLinks() {
   try {
     const data = await listLinks()
@@ -285,9 +309,7 @@ async function loadLinks() {
   }
 }
 
-/**
- * Generate short link and display QR code
- */
+/* Generate short link and display QR code */
 async function generate() {
   const real = url.value?.trim()
   if (!real) return showToast('error', 'Please enter a URL')
@@ -314,9 +336,7 @@ async function generate() {
   }
 }
 
-/**
- * View QR code for existing link
- */
+/* View QR code for existing link */
 async function viewQR(link) {
   currentShortUrl.value = link.short_url
   qrCodeUrl.value = 'generating'
@@ -327,9 +347,7 @@ async function viewQR(link) {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
-/**
- * Download QR code as image
- */
+/* Download QR code as image */
 function downloadQR() {
   const canvas = qrCanvas.value
   if (!canvas) return
@@ -346,9 +364,7 @@ function downloadQR() {
   })
 }
 
-/**
- * Copy short URL to clipboard
- */
+/* Copy short URL to clipboard */
 async function copyToClipboard() {
   try {
     await navigator.clipboard.writeText(currentShortUrl.value)
@@ -356,31 +372,6 @@ async function copyToClipboard() {
     setTimeout(() => { copied.value = false }, 2000)
   } catch (e) {
     showToast('error', 'Failed to copy URL')
-  }
-}
-
-/**
- * Delete a link
- */
-async function removeLink(link) {
-  const key = link?.id ?? link?.code
-  if (!key) return showToast('error', 'Cannot delete: missing identifier')
-
-  if (!confirm(`Delete ${link.short_url || link.code}?`)) return
-  
-  try {
-    await deleteLink(key)
-    await loadLinks()
-    
-    if (currentShortUrl.value === link.short_url) {
-      qrCodeUrl.value = ''
-      currentShortUrl.value = ''
-    }
-    
-    showToast('success', 'Link deleted successfully')
-  } catch (e) {
-    const msg = e?.response?.data?.error || 'Delete failed'
-    showToast('error', msg)
   }
 }
 
