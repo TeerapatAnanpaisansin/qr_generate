@@ -197,13 +197,26 @@ const askDelete = (shortUrl) => {
 
 const confirmDelete = async () => {
   if (!deleteTarget.value) return
+
+  // normalize: accept full short_url or code
+  let key = deleteTarget.value
+  if (/^https?:\/\//i.test(key)) {
+    try {
+      const u = new URL(key)
+      const parts = u.pathname.split('/').filter(Boolean) // e.g. ["u","qQ_i3Gqb"]
+      key = parts.pop() || key
+    } catch {
+      // leave key as-is if URL ctor fails
+    }
+  }
+
   try {
-    await deleteLink(deleteTarget.value)
+    await deleteLink(key)          // <- now sending only the code
     await loadLinks()
     showToast('success', 'Link deleted successfully!')
   } catch (e) {
-    showToast('error', 'Failed to delete link')
     console.error(e)
+    showToast('error', 'Failed to delete link')
   } finally {
     showConfirm.value = false
     deleteTarget.value = null
