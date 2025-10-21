@@ -1,7 +1,7 @@
 // qr_generate/api/_lib/url_guard.js
 
 import crypto from "node:crypto";
-import { toASCII, toUnicode } from "punycode/";
+import { domainToASCII, domainToUnicode } from "node:url";
 
 const ALLOWLIST = (process.env.URL_GUARD_ALLOWLIST || "")
   .split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -28,8 +28,8 @@ export function normalizeUrl(rawInput) {
   const hasScheme = /^https?:\/\//i.test(trimmed);
   const url = new URL(hasScheme ? trimmed : `https://${trimmed}`);
 
-  const hostAscii = toASCII(url.hostname).toLowerCase();
-  const hostUnicode = toUnicode(hostAscii);
+  const hostAscii = domainToASCII(url.hostname).toLowerCase();
+  const hostUnicode = domainToUnicode(hostAscii);
 
   url.hostname = hostAscii; 
 

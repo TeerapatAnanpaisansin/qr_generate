@@ -11,6 +11,7 @@
     "bcryptjs": "^3.0.2",
     "jsonwebtoken": "^9.0.2",
     "nanoid": "^5.1.5",
-    "zod": "^3.22.0"
+    "zod": "^3.22.0",
+    "punycode": "^2.3.1"
   }
 }
