@@ -4,7 +4,6 @@
     <div class="mx-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow">
       <h2 class="mb-4 text-center text-2xl font-bold text-gray-600">QR Generator</h2>
       <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-2xl font-bold text-gray-600">QR Generator</h2>
         <button @click="doLogout" class="text-sm text-gray-600 hover:text-gray-900 underline">
           Logout
         </button>
