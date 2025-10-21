@@ -3,6 +3,12 @@
     <!-- Generator Card -->
     <div class="mx-auto w-full max-w-lg rounded-2xl bg-white p-6 shadow">
       <h2 class="mb-4 text-center text-2xl font-bold text-gray-600">QR Generator</h2>
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-2xl font-bold text-gray-600">QR Generator</h2>
+        <button @click="doLogout" class="text-sm text-gray-600 hover:text-gray-900 underline">
+          Logout
+        </button>
+      </div>
 
       <label class="mb-2 block text-lg font-bold text-gray-600">Enter URL</label>
       <input
@@ -169,7 +175,8 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { createLink, listLinks, deleteLink } from '@/api/api'
+import { useRouter } from 'vue-router'
+import { createLink, listLinks, deleteLink, logout } from '@/api/api'
 import DeleteNotification from '@/components/delete_notification.vue'
 import ConfirmNotification from '@/components/confirm_notification.vue'
 
@@ -189,6 +196,12 @@ const role = ref(localStorage.getItem('role') || 'user')
 
 const showConfirm = ref(false);
 const deleteTarget = ref(null);
+
+const router = useRouter()
+function doLogout() {
+  logout()
+  router.push('/login')
+}
 
 const askDelete = (shortUrl) => {
   deleteTarget.value = shortUrl;

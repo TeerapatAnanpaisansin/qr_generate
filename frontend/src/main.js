@@ -13,7 +13,7 @@ const saved = localStorage.getItem('jwt')
 if (saved) setToken(saved)
 
 const routes = [
-  { path: '/', redirect: '/login' },
+  { path: '/', redirect: () => (localStorage.getItem('jwt') ? '/qr' : '/login') },
   { path: '/login', name: 'Login', component: Login, meta: { public: true } },
   { path: '/register', name: 'Register', component: Register, meta: { public: true } },
   { path: '/qr', name: 'Qr', component: Qr },
@@ -31,7 +31,6 @@ const router = createRouter({
 router.beforeEach((to) => {
   const authed = Boolean(localStorage.getItem('jwt'))
   if (!to.meta.public && !authed) return { path: '/login' }
-  if (to.name === 'Login' && authed) return { path: '/qr' }
   return true
 })
 
