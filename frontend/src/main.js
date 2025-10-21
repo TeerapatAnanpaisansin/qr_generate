@@ -39,11 +39,3 @@ const app = createApp(App)
 app.use(router)
 app.component('Icon', Icon)
 app.mount('#app')
-
-/**
- * Logout user when tab/window is closed
- * This ensures security by clearing authentication tokens
- */
-window.addEventListener('beforeunload', () => {
-  clearAuth()
-})
