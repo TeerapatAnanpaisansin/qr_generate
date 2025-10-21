@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { authenticate } from "../_lib/auth.js";
 import { setCors, getBaseUrl } from "../_lib/http.js";
 import { gristInsert, gristQuery, TABLES } from "../_lib/grist.js";
+import { guardUrl } from "../_lib/url_guard.js";
 
 const ADMIN_ROLE = "admin";
 const MIN_CODE_LENGTH = 4;
@@ -98,6 +99,16 @@ async function handleCreateLink(requestBody, currentUser, baseUrl) {
   const { real_url, code } = createSchema.parse(requestBody);
   const shortCode = code || nanoid(DEFAULT_CODE_LENGTH);
 
+  // URL Safety Guard: ป้องกันผู้ใช้สร้างลิงก์อันตราย (phishing/malware)
+  const safety = await guardUrl(real_url);
+  const isAdmin = currentUser.role === ADMIN_ROLE;
+  if (safety.verdict === "block") {
+    throw new Error("BLOCKED_UNSAFE_URL");
+  }
+  if (safety.verdict === "review" && !isAdmin) {
+    throw new Error("REVIEW_REQUIRED");
+  } 
+
   const existingLinks = await gristQuery(TABLES.LINKS, { code: shortCode });
   if (existingLinks.length > 0) {
     throw new Error("CODE_EXISTS");
@@ -158,6 +169,15 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "method not allowed" });
     
   } catch (error) {
+
+    if (error.message === "BLOCKED_UNSAFE_URL") {
+      return res.status(400).json({ error: "URL is unsafe" });
+    }
+
+    if (error.message === "REVIEW_REQUIRED") {
+      return res.status(400).json({ error: "Suspicious URL (needs admin review)" });
+    }
+
     if (error.message === "No token" || error.message === "User not found") {
       return res.status(401).json({ error: "unauthorized" });
     }
